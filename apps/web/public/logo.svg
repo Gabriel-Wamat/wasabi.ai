@@ -1,0 +1,113 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#gradient1)" opacity="0.1"/>
+  
+  <!-- Central Hub Circle -->
+  <circle cx="100" cy="100" r="28" fill="url(#gradient1)" filter="url(#glow)"/>
+  <circle cx="100" cy="100" r="22" fill="white" opacity="0.2"/>
+  
+  <!-- Orbital Rings -->
+  <circle cx="100" cy="100" r="60" stroke="url(#gradient2)" stroke-width="2" fill="none" opacity="0.3" stroke-dasharray="8 8">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="0 100 100"
+      to="360 100 100"
+      dur="20s"
+      repeatCount="indefinite"/>
+  </circle>
+  
+  <circle cx="100" cy="100" r="75" stroke="url(#gradient3)" stroke-width="2" fill="none" opacity="0.3" stroke-dasharray="12 8">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="360 100 100"
+      to="0 100 100"
+      dur="25s"
+      repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Connected Nodes - Top -->
+  <g>
+    <line x1="100" y1="72" x2="100" y2="40" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="100" cy="35" r="12" fill="url(#gradient2)" filter="url(#glow)"/>
+    <circle cx="100" cy="35" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Top Right -->
+  <g>
+    <line x1="119.8" y1="82.8" x2="141.4" y2="58.6" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="145" cy="55" r="12" fill="url(#gradient3)" filter="url(#glow)"/>
+    <circle cx="145" cy="55" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Right -->
+  <g>
+    <line x1="128" y1="100" x2="160" y2="100" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="165" cy="100" r="12" fill="url(#gradient1)" filter="url(#glow)"/>
+    <circle cx="165" cy="100" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Bottom Right -->
+  <g>
+    <line x1="119.8" y1="117.2" x2="141.4" y2="141.4" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="145" cy="145" r="12" fill="url(#gradient2)" filter="url(#glow)"/>
+    <circle cx="145" cy="145" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Bottom -->
+  <g>
+    <line x1="100" y1="128" x2="100" y2="160" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="100" cy="165" r="12" fill="url(#gradient3)" filter="url(#glow)"/>
+    <circle cx="100" cy="165" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Bottom Left -->
+  <g>
+    <line x1="80.2" y1="117.2" x2="58.6" y2="141.4" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="55" cy="145" r="12" fill="url(#gradient1)" filter="url(#glow)"/>
+    <circle cx="55" cy="145" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Left -->
+  <g>
+    <line x1="72" y1="100" x2="40" y2="100" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="35" cy="100" r="12" fill="url(#gradient2)" filter="url(#glow)"/>
+    <circle cx="35" cy="100" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Connected Nodes - Top Left -->
+  <g>
+    <line x1="80.2" y1="82.8" x2="58.6" y2="58.6" stroke="url(#gradient1)" stroke-width="2" opacity="0.6"/>
+    <circle cx="55" cy="55" r="12" fill="url(#gradient3)" filter="url(#glow)"/>
+    <circle cx="55" cy="55" r="8" fill="white" opacity="0.3"/>
+  </g>
+  
+  <!-- Pulse Animation for Central Hub -->
+  <circle cx="100" cy="100" r="28" fill="url(#gradient1)" opacity="0.4">
+    <animate attributeName="r" values="28;32;28" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;0.1;0.4" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>

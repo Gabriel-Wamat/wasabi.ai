@@ -1,0 +1,18 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#B8F5A5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5A9C4D;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="48" height="48" rx="10" fill="#0a1f1a"/>
+  
+  <!-- V shape -->
+  <path d="M 14 14 L 20 14 L 24 36 L 22 36 Z" fill="url(#vGrad)"/>
+  <path d="M 28 14 L 34 14 L 26 36 L 24 36 Z" fill="url(#vGrad)"/>
+  
+  <!-- Center accent -->
+  <path d="M 18 16 L 19 16 L 22.5 34 L 22 34 Z" fill="#0a1f1a" opacity="0.4"/>
+  <path d="M 29 16 L 30 16 L 26 34 L 25.5 34 Z" fill="#0a1f1a" opacity="0.4"/>
+</svg>

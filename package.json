@@ -1,0 +1,16 @@
+{
+  "name": "personal-hub",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @personal-hub/backend --filter @personal-hub/web dev",
+    "dev:desktop": "pnpm --filter @personal-hub/desktop dev",
+    "build": "pnpm --filter @personal-hub/backend build && pnpm --filter @personal-hub/web build",
+    "build:desktop": "pnpm --filter @personal-hub/desktop build",
+    "lint": "pnpm typecheck",
+    "typecheck": "pnpm --filter @personal-hub/backend typecheck && pnpm --filter @personal-hub/web typecheck",
+    "test": "pnpm --filter @personal-hub/backend test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

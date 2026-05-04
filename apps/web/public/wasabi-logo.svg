@@ -1,0 +1,79 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wasabiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7FB069;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#56AB91;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3D8B6B;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="wasabiGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#B5E550;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#7FB069;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle with glow -->
+  <circle cx="100" cy="100" r="95" fill="url(#wasabiGlow)" opacity="0.4"/>
+  
+  <!-- Main wasabi leaf shape -->
+  <g transform="translate(100, 100)">
+    <!-- Stem -->
+    <path d="M 0,-60 Q -3,-30 -5,0 Q -3,30 0,60" 
+          fill="none" 
+          stroke="url(#wasabiGradient)" 
+          stroke-width="6" 
+          stroke-linecap="round"/>
+    
+    <!-- Left leaf -->
+    <path d="M -5,0 Q -45,-10 -65,-30 Q -55,-15 -45,-5 Q -35,0 -5,5" 
+          fill="url(#wasabiGradient)" 
+          opacity="0.9">
+      <animate attributeName="d" 
+               dur="3s" 
+               repeatCount="indefinite"
+               values="M -5,0 Q -45,-10 -65,-30 Q -55,-15 -45,-5 Q -35,0 -5,5;
+                       M -5,0 Q -45,-8 -65,-28 Q -55,-13 -45,-3 Q -35,2 -5,5;
+                       M -5,0 Q -45,-10 -65,-30 Q -55,-15 -45,-5 Q -35,0 -5,5"/>
+    </path>
+    
+    <!-- Right leaf -->
+    <path d="M 5,-20 Q 45,-30 65,-50 Q 55,-35 45,-25 Q 35,-20 5,-15" 
+          fill="url(#wasabiGradient)" 
+          opacity="0.95">
+      <animate attributeName="d" 
+               dur="3s" 
+               repeatCount="indefinite"
+               values="M 5,-20 Q 45,-30 65,-50 Q 55,-35 45,-25 Q 35,-20 5,-15;
+                       M 5,-20 Q 45,-28 65,-48 Q 55,-33 45,-23 Q 35,-18 5,-15;
+                       M 5,-20 Q 45,-30 65,-50 Q 55,-35 45,-25 Q 35,-20 5,-15"/>
+    </path>
+    
+    <!-- Bottom right leaf -->
+    <path d="M 5,25 Q 35,30 55,45 Q 45,35 35,30 Q 25,27 5,30" 
+          fill="url(#wasabiGradient)" 
+          opacity="0.85">
+      <animate attributeName="d" 
+               dur="3s" 
+               repeatCount="indefinite"
+               values="M 5,25 Q 35,30 55,45 Q 45,35 35,30 Q 25,27 5,30;
+                       M 5,25 Q 35,32 55,47 Q 45,37 35,32 Q 25,29 5,30;
+                       M 5,25 Q 35,30 55,45 Q 45,35 35,30 Q 25,27 5,30"/>
+    </path>
+    
+    <!-- Center decorative element (W shape) -->
+    <g transform="translate(0, 5)">
+      <path d="M -20,-10 L -15,10 L -5,-5 L 5,10 L 10,-10" 
+            fill="none" 
+            stroke="#ffffff" 
+            stroke-width="3" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            opacity="0.8"/>
+    </g>
+  </g>
+  
+  <!-- Subtle dots for texture -->
+  <circle cx="75" cy="80" r="2" fill="#B5E550" opacity="0.4"/>
+  <circle cx="125" cy="90" r="2" fill="#B5E550" opacity="0.4"/>
+  <circle cx="90" cy="130" r="2" fill="#B5E550" opacity="0.4"/>
+  <circle cx="115" cy="120" r="2" fill="#B5E550" opacity="0.4"/>
+</svg>

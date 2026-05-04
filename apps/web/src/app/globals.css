@@ -1,0 +1,74 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0D0D0D; --s1: #141414; --s2: #1A1A1A; --s3: #222;
+  --bd: #2A2A2A; --gr: #11C76F; --gr2: #0DA85D; --gd: #0a2318;
+  --tx: #F0F0F0; --t2: #888; --t3: #444;
+  --rd: #FF4757; --yw: #FFC107; --bl: #4A90D9; --sw: 220px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+html, body { height: 100%; color: var(--tx); font-family: var(--font); font-size: 13px; }
+body {
+  min-height: 100%;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 18% 18%, rgba(17, 199, 111, 0.16) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 72% 32%, rgba(86, 171, 145, 0.12) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 42% 78%, rgba(17, 199, 111, 0.10) 0 1px, transparent 1.8px),
+    linear-gradient(135deg, rgba(17, 199, 111, 0.055), transparent 34%),
+    linear-gradient(315deg, rgba(86, 171, 145, 0.04), transparent 42%);
+  background-position: 0 0, 18px 22px, 36px 8px, 0 0, 0 0;
+  background-size: 54px 54px, 76px 76px, 96px 96px, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+  animation: wasabi-particle-drift 34s cubic-bezier(.45, 0, .2, 1) infinite alternate;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: -18%;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(17, 199, 111, 0.18) 0 1px, transparent 2px),
+    radial-gradient(circle, rgba(86, 171, 145, 0.11) 0 1px, transparent 2px);
+  background-position: 0 0, 30px 44px;
+  background-size: 118px 118px, 164px 164px;
+  filter: blur(0.15px);
+  opacity: 0.42;
+  transform: translate3d(0, 0, 0) rotate(0.001deg);
+  animation: wasabi-fluid-flow 26s ease-in-out infinite alternate;
+}
+body > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes wasabi-particle-drift {
+  0% {
+    background-position: 0 0, 18px 22px, 36px 8px, 0 0, 0 0;
+  }
+  45% {
+    background-position: 18px 28px, 2px 54px, 58px 18px, 0 0, 0 0;
+  }
+  100% {
+    background-position: 36px 14px, 44px 6px, 12px 48px, 0 0, 0 0;
+  }
+}
+@keyframes wasabi-fluid-flow {
+  0% {
+    transform: translate3d(-10px, -6px, 0) rotate(-0.35deg);
+    background-position: 0 0, 30px 44px;
+  }
+  50% {
+    transform: translate3d(12px, 10px, 0) rotate(0.2deg);
+    background-position: 46px 26px, 6px 82px;
+  }
+  100% {
+    transform: translate3d(-2px, 18px, 0) rotate(0.45deg);
+    background-position: 86px 58px, 72px 12px;
+  }
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }

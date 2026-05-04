@@ -1,0 +1,51 @@
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { IStorageRepository } from '../../../../application/ports/outbound/storage.repository'
+
+export class S3Adapter implements IStorageRepository {
+  private client: S3Client
+  private bucket: string
+
+  constructor(config: {
+    endpoint:  string
+    region:    string
+    bucket:    string
+    accessKey: string
+    secretKey: string
+  }) {
+    this.bucket = config.bucket
+    this.client = new S3Client({
+      endpoint:           config.endpoint,
+      region:             config.region,
+      credentials: {
+        accessKeyId:     config.accessKey,
+        secretAccessKey: config.secretKey,
+      },
+      forcePathStyle: true,
+    })
+  }
+
+  async upload(key: string, buffer: Buffer, mimetype: string): Promise<string> {
+    await this.client.send(new PutObjectCommand({
+      Bucket:      this.bucket,
+      Key:         key,
+      Body:        buffer,
+      ContentType: mimetype,
+    }))
+    return key
+  }
+
+  async getPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
+    const cmd = new GetObjectCommand({ Bucket: this.bucket, Key: key })
+    return getSignedUrl(this.client, cmd, { expiresIn })
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }))
+  }
+}

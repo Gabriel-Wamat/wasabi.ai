@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Conectando Google Calendar...</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
+    p { font-size: 1rem; opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h1>Conectando...</h1>
+    <p>Processando autorização do Google Calendar</p>
+  </div>
+
+  <script>
+    // Extrair código da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const error = urlParams.get('error');
+
+    if (error) {
+      document.querySelector('.container').innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+        <h1>Erro na Autorização</h1>
+        <p>Você cancelou a autorização ou ocorreu um erro.</p>
+        <button onclick="window.close()" style="margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: white; color: #667eea; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+          Fechar
+        </button>
+      `;
+    } else if (code) {
+      // Enviar código para a janela principal
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'GOOGLE_OAUTH_CODE',
+          code: code
+        }, window.location.origin);
+        
+        setTimeout(() => {
+          document.querySelector('.container').innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+            <h1>Sucesso!</h1>
+            <p>Você pode fechar esta janela.</p>
+          `;
+          setTimeout(() => window.close(), 1500);
+        }, 500);
+      } else {
+        document.querySelector('.container').innerHTML = `
+          <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+          <h1>Erro</h1>
+          <p>Esta janela deve ser aberta a partir do Personal Hub.</p>
+        `;
+      }
+    } else {
+      document.querySelector('.container').innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+        <h1>Código Não Encontrado</h1>
+        <p>Nenhum código de autorização foi recebido.</p>
+      `;
+    }
+  </script>
+</body>
+</html>

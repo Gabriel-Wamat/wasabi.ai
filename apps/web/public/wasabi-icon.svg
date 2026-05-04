@@ -1,0 +1,27 @@
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wasabiSmall" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7FB069;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#56AB91;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect x="2" y="2" width="36" height="36" rx="8" fill="url(#wasabiSmall)"/>
+  
+  <!-- White W -->
+  <path d="M 10,12 L 13,24 L 17,16 L 21,24 L 24,12" 
+        fill="none" 
+        stroke="#ffffff" 
+        stroke-width="2.5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Small leaf accent -->
+  <path d="M 26,14 Q 30,12 32,10" 
+        fill="none" 
+        stroke="#ffffff" 
+        stroke-width="1.5" 
+        stroke-linecap="round"
+        opacity="0.7"/>
+</svg>

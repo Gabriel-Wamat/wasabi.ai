@@ -1,0 +1,14 @@
+node_modules
+dist
+.next
+.env
+*.local
+CLAUDE.md
+apps/web/public/LOGO_README.md
+.runtime-*.log
+target
+src-tauri/target
+.turbo
+coverage
+.vite
+*.tsbuildinfo

@@ -1,0 +1,46 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wasabiV" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#B8F5A5;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7FB069;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5A9C4D;stop-opacity:1" />
+    </linearGradient>
+    
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle (optional) -->
+  <rect width="200" height="200" rx="40" fill="#0a1f1a"/>
+  
+  <!-- Left blade of V -->
+  <path d="M 60 60 L 85 60 L 100 150 L 90 150 Z" 
+        fill="url(#wasabiV)" 
+        filter="url(#glow)"
+        opacity="0.95"/>
+  
+  <!-- Right blade of V -->
+  <path d="M 115 60 L 140 60 L 110 150 L 100 150 Z" 
+        fill="url(#wasabiV)" 
+        filter="url(#glow)"
+        opacity="0.95"/>
+  
+  <!-- Center stem/connector -->
+  <path d="M 95 140 L 105 140 L 100 160 Z" 
+        fill="url(#wasabiV)" 
+        opacity="0.9"/>
+  
+  <!-- Inner dark accents for depth -->
+  <path d="M 75 70 L 80 70 L 92 145 L 90 145 Z" 
+        fill="#0a1f1a" 
+        opacity="0.6"/>
+  
+  <path d="M 120 70 L 125 70 L 108 145 L 110 145 Z" 
+        fill="#0a1f1a" 
+        opacity="0.6"/>
+</svg>
