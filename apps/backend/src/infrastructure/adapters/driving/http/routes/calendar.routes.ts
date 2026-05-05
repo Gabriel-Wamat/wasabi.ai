@@ -10,8 +10,13 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ''
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3000/oauth-callback.html'
 
 function ensureGoogleConfig() {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
-    throw AppError.validation('Google Calendar não configurado')
+  const hasPlaceholderSecret = GOOGLE_CLIENT_SECRET.trim() === 'your-client-secret'
+    || GOOGLE_CLIENT_SECRET.includes('[COLE_AQUI]')
+    || GOOGLE_CLIENT_SECRET.includes('COLE_AQUI')
+  const hasPlaceholderClient = GOOGLE_CLIENT_ID.trim().startsWith('your-client-id')
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI || hasPlaceholderSecret || hasPlaceholderClient) {
+    throw AppError.validation('Google Calendar precisa de credenciais OAuth válidas')
   }
 }
 
@@ -126,6 +131,7 @@ export async function calendarRoutes(app: FastifyInstance, { container }: { cont
         orderBy: 'startTime',
         timeMin: timeMin || new Date().toISOString(),
         timeMax,
+        showDeleted: false,
       })
 
       const events = response.data.items?.map(event => ({
@@ -135,8 +141,29 @@ export async function calendarRoutes(app: FastifyInstance, { container }: { cont
         start: event.start?.dateTime || event.start?.date,
         end: event.end?.dateTime || event.end?.date,
         location: event.location,
-        attendees: event.attendees?.map(a => ({ email: a.email, name: a.displayName })),
+        attendees: event.attendees?.map(a => ({
+          email: a.email,
+          name: a.displayName,
+          optional: a.optional,
+          responseStatus: a.responseStatus,
+          self: a.self,
+        })),
+        creator: event.creator ? {
+          email: event.creator.email,
+          name: event.creator.displayName,
+          self: event.creator.self,
+        } : undefined,
+        organizer: event.organizer ? {
+          email: event.organizer.email,
+          name: event.organizer.displayName,
+          self: event.organizer.self,
+        } : undefined,
         htmlLink: event.htmlLink,
+        hangoutLink: event.hangoutLink,
+        conferenceLink: event.conferenceData?.entryPoints?.find(entry => entry.entryPointType === 'video')?.uri,
+        status: event.status,
+        eventType: event.eventType,
+        updated: event.updated,
         isAllDay: !event.start?.dateTime,
       })) || []
 

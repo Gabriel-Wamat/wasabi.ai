@@ -48,3 +48,72 @@ export interface PaginatedResponse<T> {
   data: T[]
   meta: { total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrev: boolean }
 }
+
+export type IpcaCategoryStatus = 'ABOVE' | 'BELOW' | 'ALIGNED' | 'INSUFFICIENT_DATA'
+
+export interface IpcaCategoryComparison {
+  categoryId:       string
+  name:             string
+  color:            string
+  icon:             string
+  ipcaGroup:        string | null
+  currentAvgCents:  number
+  previousAvgCents: number
+  userChange:       number | null
+  ipcaChange:       number | null
+  delta:            number | null
+  status:           IpcaCategoryStatus
+}
+
+export interface IpcaComparison {
+  period:          string
+  year:            number
+  monthsCovered:   number
+  ipcaAccumulated: number | null
+  categories:      IpcaCategoryComparison[]
+  fetchedAt:       string
+}
+
+export interface ChatConversation {
+  id:         string
+  title:      string
+  createdAt:  string
+  updatedAt:  string
+  archivedAt: string | null
+  lastMessageAt?: string | null
+}
+
+export type ChatRole = 'USER' | 'ASSISTANT'
+
+export interface ChatMessage {
+  id:        string
+  role:      ChatRole
+  content:   string
+  createdAt: string
+}
+
+export type LlmProvider = 'openai' | 'anthropic' | 'ollama'
+
+export interface UserLlmSettings {
+  provider:  LlmProvider
+  model:     string
+  baseUrl?:  string
+  hasApiKey: boolean
+  updatedAt?: string
+}
+
+export interface OllamaModel {
+  name:              string
+  model:             string
+  modifiedAt:        string | null
+  size:              number | null
+  family:            string | null
+  parameterSize:     string | null
+  quantizationLevel: string | null
+}
+
+export interface OllamaModelsResponse {
+  available: boolean
+  baseUrl:   string | null
+  models:    OllamaModel[]
+}

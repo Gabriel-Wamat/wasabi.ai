@@ -45,6 +45,15 @@ export async function financialRoutes(app: FastifyInstance, { container }: { con
     return reply.send({ data: result })
   })
 
+  app.get('/ipca-comparison', async (req, reply) => {
+    const userId = getUserId(req)
+    const { year } = z.object({
+      year: z.coerce.number().int().min(2010).max(2100).default(new Date().getFullYear()),
+    }).parse(req.query)
+    const result = await container.getIpcaComparison.execute({ userId, year })
+    return reply.send({ data: result })
+  })
+
   app.get('/goals', async (req, reply) => {
     const userId = getUserId(req)
     const goals  = await container.goalRepo.findByUser(userId)

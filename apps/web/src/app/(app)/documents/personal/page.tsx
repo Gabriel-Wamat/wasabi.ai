@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { statusBadge } from '@/components/ui/Badge'
 import { CreateDocumentModal } from '@/components/documents/CreateDocumentModal'
+import { DocumentPreviewModal } from '@/components/documents/DocumentPreviewModal'
 import { useToast } from '@/components/ui/Toast'
 
 function fmtDate(d: string | null) {
@@ -19,20 +20,30 @@ export default function PersonalDocsPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [openingId, setOpeningId] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ title: string; url: string } | null>(null)
 
-  const load = () => {
-    setLoading(true)
+  const load = (silent = false) => {
+    if (silent) setRefreshing(true)
+    else setLoading(true)
     const params = new URLSearchParams({ type: 'PERSONAL', limit: '50' })
     if (search) params.set('search', search)
     if (status) params.set('status', status)
     api.get<PaginatedResponse<Document>>(`/documents?${params}`)
       .then(r => setDocs(r.data))
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (silent) setRefreshing(false)
+        else setLoading(false)
+      })
   }
 
-  useEffect(() => { load() }, [search, status])
+  useEffect(() => {
+    if (loading) load()
+    else load(true)
+  }, [search, status])
 
   const openDocument = async (doc: Document) => {
     if (doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON') {
@@ -45,19 +56,14 @@ export default function PersonalDocsPage() {
       return
     }
 
-    const fileWindow = window.open('about:blank', '_blank')
-    if (fileWindow) fileWindow.opener = null
-
+    setOpeningId(doc.id)
     try {
       const result = await api.get<{ data: { url: string } }>(`/documents/${doc.id}/file`)
-      if (fileWindow) {
-        fileWindow.location.href = result.data.url
-      } else {
-        window.location.href = result.data.url
-      }
+      setPreview({ title: doc.title, url: result.data.url })
     } catch (err: any) {
-      fileWindow?.close()
       showToast(err.message ?? 'Não foi possível abrir o arquivo.', 'error')
+    } finally {
+      setOpeningId(null)
     }
   }
 
@@ -90,7 +96,7 @@ export default function PersonalDocsPage() {
         {loading ? (
           <div style={{ color: 'var(--t2)', padding: 20 }}>Carregando...</div>
         ) : (
-          <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden', opacity: refreshing ? 0.72 : 1, transition: 'opacity 160ms ease' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -114,7 +120,7 @@ export default function PersonalDocsPage() {
                         variant={doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'primary' : 'secondary'}
                         onClick={() => openDocument(doc)}
                       >
-                        {doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'Renovar' : 'Abrir'}
+                        {openingId === doc.id ? 'Abrindo...' : doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'Renovar' : 'Abrir'}
                       </Button>
                     </td>
                   </tr>
@@ -133,6 +139,12 @@ export default function PersonalDocsPage() {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={load}
         type="PERSONAL"
+      />
+      <DocumentPreviewModal
+        isOpen={!!preview}
+        title={preview?.title ?? ''}
+        url={preview?.url ?? null}
+        onClose={() => setPreview(null)}
       />
     </div>
   )

@@ -78,13 +78,11 @@ pub fn run() {
 
             // Close to tray: intercept window close event
             if let Some(win) = app.get_webview_window("main") {
+                let window = win.clone();
                 win.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                         api.prevent_close();
-                        // Instead of closing, hide to tray
-                        if let Some(w) = app.get_webview_window("main") {
-                            let _ = w.hide();
-                        }
+                        let _ = window.hide();
                     }
                 });
             }

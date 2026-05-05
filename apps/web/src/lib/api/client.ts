@@ -1,4 +1,11 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+function getApiBase() {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+  const base = raw.replace(/\/$/, '')
+
+  return base.endsWith('/api') ? base : `${base}/api`
+}
+
+const BASE = getApiBase()
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null

@@ -85,10 +85,49 @@ export default function ProfilePage() {
     router.push('/auth/login')
   }
 
+  const profileActions = (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      <button
+        type="button"
+        onClick={() => router.push('/settings')}
+        style={{
+          height: 40,
+          padding: '0 14px',
+          borderRadius: 10,
+          border: '1px solid var(--bd)',
+          background: 'var(--s2)',
+          color: 'var(--tx)',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: 'pointer',
+        }}
+      >
+        Configurações
+      </button>
+      <button
+        type="button"
+        onClick={handleLogout}
+        style={{
+          height: 40,
+          padding: '0 14px',
+          borderRadius: 10,
+          border: '1px solid rgba(255, 74, 98, 0.28)',
+          background: 'rgba(255, 74, 98, 0.1)',
+          color: 'var(--rd)',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: 'pointer',
+        }}
+      >
+        Sair
+      </button>
+    </div>
+  )
+
   if (!user) {
     return (
       <div>
-        <Header title="Perfil" />
+        <Header title="Perfil" actions={profileActions} />
         <div style={{ padding: 20, color: 'var(--t2)' }}>Carregando...</div>
       </div>
     )
@@ -96,7 +135,7 @@ export default function ProfilePage() {
 
   return (
     <div>
-      <Header title="Perfil" />
+      <Header title="Perfil" actions={profileActions} />
       <div style={{ padding: 20, maxWidth: 800, margin: '0 auto' }}>
         {/* Informações da Conta */}
         <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 12, padding: 20, marginBottom: 20 }}>

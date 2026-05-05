@@ -1,6 +1,8 @@
 node_modules
 dist
 .next
+apps/web/out
+apps/desktop/src-tauri/gen
 .env
 *.local
 CLAUDE.md

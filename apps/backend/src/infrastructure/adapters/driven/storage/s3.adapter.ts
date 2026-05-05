@@ -16,22 +16,32 @@ export class S3Adapter implements IStorageRepository {
 
   constructor(config: {
     endpoint:  string
+    publicEndpoint?: string
     region:    string
     bucket:    string
     accessKey: string
     secretKey: string
   }) {
     this.bucket = config.bucket
+    const credentials = {
+      accessKeyId:     config.accessKey,
+      secretAccessKey: config.secretKey,
+    }
     this.client = new S3Client({
       endpoint:           config.endpoint,
       region:             config.region,
-      credentials: {
-        accessKeyId:     config.accessKey,
-        secretAccessKey: config.secretKey,
-      },
+      credentials,
+      forcePathStyle: true,
+    })
+    this.presignClient = new S3Client({
+      endpoint:           config.publicEndpoint ?? config.endpoint,
+      region:             config.region,
+      credentials,
       forcePathStyle: true,
     })
   }
+
+  private presignClient: S3Client
 
   private async ensureBucket(): Promise<void> {
     if (!this.bucketReady) {
@@ -58,7 +68,7 @@ export class S3Adapter implements IStorageRepository {
 
   async getPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
     const cmd = new GetObjectCommand({ Bucket: this.bucket, Key: key })
-    return getSignedUrl(this.client, cmd, { expiresIn })
+    return getSignedUrl(this.presignClient, cmd, { expiresIn })
   }
 
   async delete(key: string): Promise<void> {

@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "build:all": "tauri build --target all",
     "tauri": "tauri"
   },
   "dependencies": {

@@ -6,13 +6,23 @@ import { uuidv7 } from 'uuidv7'
 const prisma = new PrismaClient()
 
 async function main() {
+  if (process.env.SEED_DEMO_DATA !== 'true') {
+    console.log('Seed demo ignorado. Use SEED_DEMO_DATA=true para criar dados de demonstração.')
+    return
+  }
+
   console.log('🌱 Seeding database...')
 
   // User
+  const resetDemoData = process.env.SEED_RESET === 'true'
   const passwordHash = await bcrypt.hash('senha123', 12)
   const user = await prisma.user.upsert({
     where: { email: 'demo@personalhub.dev' },
-    update: {},
+    update: {
+      name: 'Demo User',
+      passwordHash,
+      timezone: 'America/Recife',
+    },
     create: {
       id: uuidv7(),
       name: 'Demo User',
@@ -23,24 +33,42 @@ async function main() {
   })
   console.log('✔ User:', user.email)
 
-  await prisma.transaction.deleteMany({ where: { userId: user.id } })
-  await prisma.financialGoal.deleteMany({ where: { userId: user.id } })
-  await prisma.project.deleteMany({ where: { userId: user.id } })
-  await prisma.document.deleteMany({ where: { userId: user.id } })
-  await prisma.financialCategory.deleteMany({ where: { userId: user.id } })
+  const existingRecords = await Promise.all([
+    prisma.transaction.count({ where: { userId: user.id } }),
+    prisma.financialGoal.count({ where: { userId: user.id } }),
+    prisma.project.count({ where: { userId: user.id } }),
+    prisma.document.count({ where: { userId: user.id } }),
+    prisma.financialCategory.count({ where: { userId: user.id } }),
+  ])
 
-  // Default categories
+  if (!resetDemoData && existingRecords.some(count => count > 0)) {
+    console.log('✔ Demo data already exists. Use SEED_RESET=true to recreate it.')
+    console.log('\n✅ Seed concluído!')
+    console.log('   Email: demo@personalhub.dev')
+    console.log('   Senha: senha123')
+    return
+  }
+
+  if (resetDemoData) {
+    await prisma.transaction.deleteMany({ where: { userId: user.id } })
+    await prisma.financialGoal.deleteMany({ where: { userId: user.id } })
+    await prisma.project.deleteMany({ where: { userId: user.id } })
+    await prisma.document.deleteMany({ where: { userId: user.id } })
+    await prisma.financialCategory.deleteMany({ where: { userId: user.id } })
+  }
+
+  // Default categories — ipcaGroup mapeia para classificação 315 (grupos IPCA do IBGE)
   const cats = [
-    { name: 'Moradia',      type: 'EXPENSE' as const, color: '#4A90D9', icon: '🏠', isDefault: true },
-    { name: 'Alimentação',  type: 'EXPENSE' as const, color: '#11C76F', icon: '🛒', isDefault: true },
-    { name: 'Transporte',   type: 'EXPENSE' as const, color: '#FFC107', icon: '🚗', isDefault: true },
-    { name: 'Saúde',        type: 'EXPENSE' as const, color: '#A78BFA', icon: '❤️',  isDefault: true },
-    { name: 'Lazer',        type: 'EXPENSE' as const, color: '#FB923C', icon: '🎮', isDefault: true },
-    { name: 'Assinaturas',  type: 'EXPENSE' as const, color: '#34D399', icon: '📱', isDefault: true },
-    { name: 'Outros',       type: 'EXPENSE' as const, color: '#888888', icon: '💸', isDefault: true },
-    { name: 'Salário',      type: 'INCOME'  as const, color: '#11C76F', icon: '💼', isDefault: true },
-    { name: 'Freelance',    type: 'INCOME'  as const, color: '#4A90D9', icon: '💰', isDefault: true },
-    { name: 'Investimentos',type: 'INCOME'  as const, color: '#A78BFA', icon: '📈', isDefault: true },
+    { name: 'Moradia',      type: 'EXPENSE' as const, color: '#4A90D9', icon: '🏠', isDefault: true, ipcaGroup: '7445' },
+    { name: 'Alimentação',  type: 'EXPENSE' as const, color: '#11C76F', icon: '🛒', isDefault: true, ipcaGroup: '7170' },
+    { name: 'Transporte',   type: 'EXPENSE' as const, color: '#FFC107', icon: '🚗', isDefault: true, ipcaGroup: '7486' },
+    { name: 'Saúde',        type: 'EXPENSE' as const, color: '#A78BFA', icon: '❤️',  isDefault: true, ipcaGroup: '7625' },
+    { name: 'Lazer',        type: 'EXPENSE' as const, color: '#FB923C', icon: '🎮', isDefault: true, ipcaGroup: '7660' },
+    { name: 'Assinaturas',  type: 'EXPENSE' as const, color: '#34D399', icon: '📱', isDefault: true, ipcaGroup: '7715' },
+    { name: 'Outros',       type: 'EXPENSE' as const, color: '#888888', icon: '💸', isDefault: true, ipcaGroup: null },
+    { name: 'Salário',      type: 'INCOME'  as const, color: '#11C76F', icon: '💼', isDefault: true, ipcaGroup: null },
+    { name: 'Freelance',    type: 'INCOME'  as const, color: '#4A90D9', icon: '💰', isDefault: true, ipcaGroup: null },
+    { name: 'Investimentos',type: 'INCOME'  as const, color: '#A78BFA', icon: '📈', isDefault: true, ipcaGroup: null },
   ]
 
   const createdCats = await Promise.all(

@@ -32,6 +32,20 @@ import { DeleteProjectUseCase } from '../../application/use-cases/project/delete
 import { GetProfileUseCase } from '../../application/use-cases/user/get-profile'
 import { UpdateProfileUseCase } from '../../application/use-cases/user/update-profile'
 import { ChangePasswordUseCase } from '../../application/use-cases/user/change-password'
+import { IbgeAdapter } from '../adapters/driven/external/ibge.adapter'
+import { GetIpcaComparisonUseCase } from '../../application/use-cases/financial/get-ipca-comparison'
+import { createLlmAdapter } from '../adapters/driven/llm/llm-adapter.factory'
+import { OpenAiEmbeddingAdapter } from '../adapters/driven/embeddings/openai-embedding.adapter'
+import { PrismaVectorContextRepository } from '../adapters/driven/database/repositories/prisma-vector-context.repository'
+import { PrismaChatRepository } from '../adapters/driven/database/repositories/prisma-chat.repository'
+import { PrismaLlmSettingsRepository } from '../adapters/driven/database/repositories/prisma-llm-settings.repository'
+import { ChatContextBuilder } from '../../application/services/chat-context-builder'
+import { ListConversationsUseCase } from '../../application/use-cases/chat/list-conversations'
+import { CreateConversationUseCase } from '../../application/use-cases/chat/create-conversation'
+import { DeleteConversationUseCase } from '../../application/use-cases/chat/delete-conversation'
+import { RenameConversationUseCase } from '../../application/use-cases/chat/rename-conversation'
+import { GetMessagesUseCase } from '../../application/use-cases/chat/get-messages'
+import { SendMessageUseCase } from '../../application/use-cases/chat/send-message'
 
 export function buildContainer() {
   const prisma = new PrismaClient({
@@ -41,11 +55,12 @@ export function buildContainer() {
   const redis = new RedisAdapter(process.env.REDIS_URL ?? 'redis://localhost:6379')
 
   const s3 = new S3Adapter({
-    endpoint:  process.env.S3_ENDPOINT  ?? 'http://localhost:9000',
-    region:    process.env.S3_REGION    ?? 'us-east-1',
-    bucket:    process.env.S3_BUCKET    ?? 'personalhub-dev',
-    accessKey: process.env.S3_ACCESS_KEY ?? 'minio_user',
-    secretKey: process.env.S3_SECRET_KEY ?? 'minio_pass',
+    endpoint:       process.env.S3_ENDPOINT ?? 'http://localhost:9000',
+    publicEndpoint: process.env.S3_PUBLIC_ENDPOINT ?? process.env.S3_ENDPOINT ?? 'http://localhost:9000',
+    region:         process.env.S3_REGION ?? 'us-east-1',
+    bucket:         process.env.S3_BUCKET ?? 'personalhub-dev',
+    accessKey:      process.env.S3_ACCESS_KEY ?? 'minio_user',
+    secretKey:      process.env.S3_SECRET_KEY ?? 'minio_pass',
   })
 
   const docRepo  = new PrismaDocumentRepository(prisma)
@@ -54,6 +69,22 @@ export function buildContainer() {
   const goalRepo = new PrismaGoalRepository(prisma)
   const userRepo = new PrismaUserRepository(prisma)
   const catRepo  = new PrismaCategoryRepository(prisma)
+  const chatRepo = new PrismaChatRepository(prisma)
+  const llmSettingsRepo = new PrismaLlmSettingsRepository(
+    prisma,
+    process.env.LLM_SETTINGS_SECRET ?? process.env.JWT_SECRET ?? 'dev-only-llm-settings-secret',
+  )
+  const vectorRepo = new PrismaVectorContextRepository(prisma)
+  const ibge     = new IbgeAdapter(redis)
+  const llm      = createLlmAdapter(process.env)
+  const embeddings = new OpenAiEmbeddingAdapter({
+    apiKey: process.env.EMBEDDINGS_PROVIDER === 'openai' || process.env.LLM_PROVIDER === 'openai'
+      ? process.env.OPENAI_API_KEY
+      : undefined,
+    model: process.env.OPENAI_EMBEDDING_MODEL ?? 'text-embedding-3-small',
+    baseUrl: process.env.OPENAI_BASE_URL,
+  })
+  const chatContext = new ChatContextBuilder(userRepo, docRepo, projRepo, txRepo, goalRepo, embeddings, vectorRepo)
 
   return {
     prisma,
@@ -76,6 +107,7 @@ export function buildContainer() {
     updateTransaction:   new UpdateTransactionUseCase(txRepo, redis),
     deleteTransaction:   new DeleteTransactionUseCase(txRepo, redis),
     getFinancialSummary: new GetFinancialSummaryUseCase(txRepo, redis),
+    getIpcaComparison:   new GetIpcaComparisonUseCase(txRepo, catRepo, ibge, redis),
     getDashboardOverview: new GetDashboardOverviewUseCase(docRepo, projRepo, txRepo, goalRepo, redis),
     createCategory: new CreateCategoryUseCase(catRepo),
     listCategories: new ListCategoriesUseCase(catRepo),
@@ -84,12 +116,23 @@ export function buildContainer() {
     getProfile: new GetProfileUseCase(userRepo),
     updateProfile: new UpdateProfileUseCase(userRepo),
     changePassword: new ChangePasswordUseCase(userRepo),
+    listConversations:   new ListConversationsUseCase(chatRepo),
+    createConversation:  new CreateConversationUseCase(chatRepo),
+    deleteConversation:  new DeleteConversationUseCase(chatRepo),
+    renameConversation:  new RenameConversationUseCase(chatRepo),
+    getChatMessages:     new GetMessagesUseCase(chatRepo),
+    sendChatMessage:     new SendMessageUseCase(chatRepo, llm, redis, chatContext, llmSettingsRepo, process.env),
+    llm,
+    llmSettingsRepo,
     goalRepo,
     userRepo,
     docRepo,
     projRepo,
     txRepo,
     catRepo,
+    chatRepo,
+    vectorRepo,
+    embeddings,
   }
 }
 

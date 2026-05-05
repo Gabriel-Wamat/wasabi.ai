@@ -6,6 +6,8 @@ import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { statusBadge } from '@/components/ui/Badge'
 import { CreateDocumentModal } from '@/components/documents/CreateDocumentModal'
+import { DocumentPreviewModal } from '@/components/documents/DocumentPreviewModal'
+import { useToast } from '@/components/ui/Toast'
 
 function fmtDate(d: string | null) {
   if (!d) return '—'
@@ -13,22 +15,55 @@ function fmtDate(d: string | null) {
 }
 
 export default function WorkDocsPage() {
+  const { showToast } = useToast()
   const [docs, setDocs]     = useState<Document[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [openingId, setOpeningId] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ title: string; url: string } | null>(null)
 
-  const load = () => {
-    setLoading(true)
+  const load = (silent = false) => {
+    if (silent) setRefreshing(true)
+    else setLoading(true)
     const params = new URLSearchParams({ type: 'WORK', limit: '50' })
     if (search) params.set('search', search)
     api.get<PaginatedResponse<Document>>(`/documents?${params}`)
       .then(r => setDocs(r.data))
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (silent) setRefreshing(false)
+        else setLoading(false)
+      })
   }
 
-  useEffect(() => { load() }, [search])
+  useEffect(() => {
+    if (loading) load()
+    else load(true)
+  }, [search])
+
+  const openDocument = async (doc: Document) => {
+    if (doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON') {
+      setIsCreateOpen(true)
+      return
+    }
+
+    if (!doc.fileUrl) {
+      showToast('Este documento ainda não possui arquivo anexado.', 'info')
+      return
+    }
+
+    setOpeningId(doc.id)
+    try {
+      const result = await api.get<{ data: { url: string } }>(`/documents/${doc.id}/file`)
+      setPreview({ title: doc.title, url: result.data.url })
+    } catch (err: any) {
+      showToast(err.message ?? 'Não foi possível abrir o arquivo.', 'error')
+    } finally {
+      setOpeningId(null)
+    }
+  }
 
   return (
     <div>
@@ -50,7 +85,7 @@ export default function WorkDocsPage() {
         {loading ? (
           <div style={{ color: 'var(--t2)', padding: 20 }}>Carregando...</div>
         ) : (
-          <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden', opacity: refreshing ? 0.72 : 1, transition: 'opacity 160ms ease' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -68,8 +103,12 @@ export default function WorkDocsPage() {
                     <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{fmtDate(doc.issuedAt)}</td>
                     <td style={{ padding: '9px 12px' }}>{statusBadge(doc.status)}</td>
                     <td style={{ padding: '9px 12px' }}>
-                      <Button size="sm" variant={doc.status === 'EXPIRING_SOON' ? 'primary' : 'secondary'}>
-                        {doc.status === 'EXPIRING_SOON' ? 'Renovar' : 'Abrir'}
+                      <Button
+                        size="sm"
+                        variant={doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'primary' : 'secondary'}
+                        onClick={() => openDocument(doc)}
+                      >
+                        {openingId === doc.id ? 'Abrindo...' : doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'Renovar' : 'Abrir'}
                       </Button>
                     </td>
                   </tr>
@@ -88,6 +127,12 @@ export default function WorkDocsPage() {
         onClose={() => setIsCreateOpen(false)}
         onSuccess={load}
         type="WORK"
+      />
+      <DocumentPreviewModal
+        isOpen={!!preview}
+        title={preview?.title ?? ''}
+        url={preview?.url ?? null}
+        onClose={() => setPreview(null)}
       />
     </div>
   )

@@ -8,6 +8,7 @@ export interface FinancialCategoryProps {
   color: string
   icon: string
   isDefault: boolean
+  ipcaGroup?: string | null
 }
 
 export class FinancialCategory {
@@ -20,6 +21,7 @@ export class FinancialCategory {
   get color() { return this.props.color }
   get icon() { return this.props.icon }
   get isDefault() { return this.props.isDefault }
+  get ipcaGroup() { return this.props.ipcaGroup ?? null }
 
   toJSON() {
     return {
@@ -30,6 +32,7 @@ export class FinancialCategory {
       color: this.color,
       icon: this.icon,
       isDefault: this.isDefault,
+      ipcaGroup: this.ipcaGroup,
     }
   }
 }

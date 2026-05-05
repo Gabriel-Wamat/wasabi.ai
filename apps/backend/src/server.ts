@@ -17,6 +17,7 @@ import { dashboardRoutes } from './infrastructure/adapters/driving/http/routes/d
 import { categoryRoutes } from './infrastructure/adapters/driving/http/routes/category.routes'
 import { userRoutes } from './infrastructure/adapters/driving/http/routes/user.routes'
 import { calendarRoutes } from './infrastructure/adapters/driving/http/routes/calendar.routes'
+import { chatRoutes } from './infrastructure/adapters/driving/http/routes/chat.routes'
 
 const app = Fastify({
   logger: {
@@ -35,7 +36,32 @@ async function bootstrap() {
   }
 
   await app.register(helmet, { contentSecurityPolicy: false })
-  await app.register(cors, { origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000', credentials: true })
+  const defaultCorsOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3003',
+    'http://tauri.localhost',
+    'https://tauri.localhost',
+    'tauri://localhost',
+    'tauri://127.0.0.1',
+  ]
+  const corsOrigins = [
+    ...defaultCorsOrigins,
+    ...(process.env.CORS_ORIGIN ?? '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean),
+  ]
+
+  await app.register(cors, {
+    origin: (origin, callback) => {
+      if (!origin || corsOrigins.includes(origin) || /^https?:\/\/localhost(?::\d+)?$/.test(origin)) {
+        callback(null, true)
+        return
+      }
+      callback(new Error(`Origin not allowed: ${origin}`), false)
+    },
+    credentials: true,
+  })
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
   await app.register(jwt, { secret: jwtSecret })
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } })
@@ -57,6 +83,7 @@ async function bootstrap() {
   await app.register(dashboardRoutes,   { prefix: '/api/dashboard',    container } as any)
   await app.register(categoryRoutes,    { prefix: '/api',              container } as any)
   await app.register(calendarRoutes,    { prefix: '/api/calendar',     container } as any)
+  await app.register(chatRoutes,        { prefix: '/api/chat',         container } as any)
 
   const port = Number(process.env.PORT ?? 3001)
   await app.listen({ port, host: '0.0.0.0' })

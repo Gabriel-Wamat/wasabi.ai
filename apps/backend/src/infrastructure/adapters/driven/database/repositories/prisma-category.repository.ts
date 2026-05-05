@@ -69,6 +69,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
       color: raw.color,
       icon: raw.icon,
       isDefault: raw.isDefault,
+      ipcaGroup: raw.ipcaGroup,
     })
   }
 }

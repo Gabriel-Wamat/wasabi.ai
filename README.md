@@ -114,11 +114,14 @@ The Google Cloud OAuth client must allow the same redirect URI.
 ## Scripts
 
 ```bash
-pnpm dev          # run backend and web app
-pnpm build        # build backend and web app
-pnpm typecheck    # typecheck backend and web app
-pnpm test         # run backend tests
-pnpm dev:desktop  # run the Tauri shell
+pnpm dev                  # run backend and web app
+pnpm build                # build backend and web app
+pnpm build:desktop        # build web export and package the Tauri app
+pnpm dev:desktop          # run the Tauri shell
+pnpm dev:desktop:backend  # run backend for desktop on port 8080
+pnpm dev:desktop:all      # run desktop backend and Tauri shell
+pnpm typecheck            # typecheck backend and web app
+pnpm test                 # run backend tests
 ```
 
 Package-level commands are also available:
@@ -129,6 +132,92 @@ pnpm --filter @personal-hub/web dev
 pnpm --filter @personal-hub/backend test
 pnpm --filter @personal-hub/backend prisma validate
 ```
+
+## Desktop App
+
+The desktop app uses Tauri and loads the static Next.js export from `apps/web/out`.
+
+### Development
+
+Use three terminals when you want to run each process explicitly:
+
+```bash
+cd apps/backend
+pnpm dev
+```
+
+```bash
+cd apps/web
+pnpm dev
+```
+
+```bash
+cd apps/desktop
+pnpm dev
+```
+
+The Tauri dev window points to `http://localhost:3000`. For the desktop backend flow, run the API on `8080`:
+
+```bash
+pnpm dev:desktop:backend
+pnpm dev:desktop
+```
+
+Or run both from the workspace root:
+
+```bash
+pnpm dev:desktop:all
+```
+
+### Production
+
+```bash
+pnpm build:desktop
+```
+
+The installers and platform bundles are generated under:
+
+```text
+apps/desktop/src-tauri/target/release/bundle/
+```
+
+### Common Issues
+
+**Next.js API routes do not work in desktop builds**
+
+The web app is exported as static files with `output: 'export'`. Any server-side API route must live in `apps/backend`.
+
+**Images do not load after export**
+
+Use `next/image` with `images.unoptimized: true` in `next.config.js`, or use regular `<img>` tags for static assets.
+
+**Environment variables do not update at runtime**
+
+Only `NEXT_PUBLIC_*` variables are available in the frontend, and they are compiled into the static build. Change the variable and rebuild the web or desktop app.
+
+**The backend is not reachable from the desktop app**
+
+Run the backend separately and ensure CORS allows the Tauri origins:
+
+```env
+CORS_ORIGIN=http://localhost:3000,http://localhost:3003,http://tauri.localhost,tauri://localhost
+```
+
+For the current desktop production build, the frontend expects:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+**The Tauri build fails because of missing system dependencies**
+
+Install the platform-specific prerequisites before building. On Ubuntu/Debian:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+On macOS, install Xcode Command Line Tools. On Windows, install Microsoft Visual Studio C++ Build Tools.
 
 ## Validation
 
