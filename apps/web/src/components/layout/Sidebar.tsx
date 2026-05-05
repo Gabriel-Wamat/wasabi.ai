@@ -4,10 +4,12 @@ import { useSidebar } from '@/contexts/SidebarContext'
 
 const NAV = [
   { href: '/dashboard',  label: 'Dashboard',  icon: 'grid' },
+  { href: '/planner',    label: 'Planejador', icon: 'check' },
   { href: '/documents/personal', label: 'Pessoais',   icon: 'file', badge: 2 },
   { href: '/documents/work',     label: 'Trabalho',   icon: 'briefcase' },
   { href: '/projects',  label: 'Projetos',   icon: 'activity' },
   { href: '/financial', label: 'Financeiro', icon: 'dollar' },
+  { href: '/business',  label: 'Gestão Empresarial', icon: 'building' },
   { href: '/goals',     label: 'Metas',      icon: 'target' },
   { href: '/calendar',  label: 'Agenda',     icon: 'calendar' },
   { href: '/profile',   label: 'Perfil',     icon: 'user' },
@@ -20,9 +22,11 @@ function Icon({ name }: { name: string }) {
     briefcase: <><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></>,
     activity: <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>,
     dollar: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>,
+    building: <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 21v-4h6v4"/><path d="M8 7h.01"/><path d="M12 7h.01"/><path d="M16 7h.01"/><path d="M8 11h.01"/><path d="M12 11h.01"/><path d="M16 11h.01"/></>,
     target: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
     calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
     user: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+    check: <><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></>,
     logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
     menu: <><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></>,
   }
@@ -39,10 +43,10 @@ export function Sidebar() {
   const { isExpanded, setSidebarHovered, sidebarWidth } = useSidebar()
 
   const groups = [
-    { label: 'Geral', items: NAV.slice(0, 1) },
-    { label: 'Documentos', items: NAV.slice(1, 3) },
-    { label: 'Gestão', items: NAV.slice(3, 5) },
-    { label: 'Outros', items: NAV.slice(5, 8) },
+    { label: 'Geral', items: NAV.slice(0, 2) },
+    { label: 'Documentos', items: NAV.slice(2, 4) },
+    { label: 'Gestão', items: NAV.slice(4, 7) },
+    { label: 'Outros', items: NAV.slice(7, 10) },
   ]
 
   return (

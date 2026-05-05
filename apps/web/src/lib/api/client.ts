@@ -47,9 +47,10 @@ async function request<T>(
   path: string,
   opts: RequestInit = {},
 ): Promise<T> {
+  const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData
   const buildRequest = (token: string | null) => ({
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers ?? {}),
     },
@@ -77,6 +78,7 @@ async function request<T>(
 export const api = {
   get:    <T>(path: string)                   => request<T>(path),
   post:   <T>(path: string, body: unknown)    => request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+  upload: <T>(path: string, body: FormData)    => request<T>(path, { method: 'POST', body }),
   put:    <T>(path: string, body: unknown)    => request<T>(path, { method: 'PUT',  body: JSON.stringify(body) }),
   patch:  <T>(path: string, body: unknown)    => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string)                      => request<void>(path, { method: 'DELETE' }),

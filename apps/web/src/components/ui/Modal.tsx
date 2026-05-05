@@ -7,9 +7,11 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: ReactNode
+  maxWidth?: number | string
+  hideHeader?: boolean
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = 480, hideHeader = false }: ModalProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -51,32 +53,34 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       <div
         style={{
           background: 'var(--s1)', borderRadius: 14,
-          border: '1px solid var(--bd)', maxWidth: 480,
+          border: '1px solid var(--bd)', maxWidth,
           width: '100%', maxHeight: '90vh', overflow: 'auto',
           animation: 'slideUp 0.2s ease-out'
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{
-          padding: '16px 20px', borderBottom: '1px solid var(--bd)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          position: 'sticky', top: 0, background: 'var(--s1)', zIndex: 1
-        }}>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none', border: 'none', color: 'var(--t2)',
-              cursor: 'pointer', fontSize: 22, padding: 0, width: 28, height: 28,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 6, transition: 'background 0.15s'
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--s2)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-          >
-            ×
-          </button>
-        </div>
+        {!hideHeader && (
+          <div style={{
+            padding: '16px 20px', borderBottom: '1px solid var(--bd)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            position: 'sticky', top: 0, background: 'var(--s1)', zIndex: 1
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none', border: 'none', color: 'var(--t2)',
+                cursor: 'pointer', fontSize: 22, padding: 0, width: 28, height: 28,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 6, transition: 'background 0.15s'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--s2)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div style={{ padding: 20 }}>
           {children}
         </div>

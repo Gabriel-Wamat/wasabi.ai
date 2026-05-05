@@ -5,6 +5,8 @@ import { Document, PaginatedResponse } from '@/types'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { statusBadge } from '@/components/ui/Badge'
+import { CreateDocumentModal } from '@/components/documents/CreateDocumentModal'
+import { useToast } from '@/components/ui/Toast'
 
 function fmtDate(d: string | null) {
   if (!d) return '—'
@@ -12,10 +14,12 @@ function fmtDate(d: string | null) {
 }
 
 export default function PersonalDocsPage() {
+  const { showToast } = useToast()
   const [docs, setDocs]     = useState<Document[]>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(true)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -30,13 +34,40 @@ export default function PersonalDocsPage() {
 
   useEffect(() => { load() }, [search, status])
 
+  const openDocument = async (doc: Document) => {
+    if (doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON') {
+      setIsCreateOpen(true)
+      return
+    }
+
+    if (!doc.fileUrl) {
+      showToast('Este documento ainda não possui arquivo anexado.', 'info')
+      return
+    }
+
+    const fileWindow = window.open('about:blank', '_blank')
+    if (fileWindow) fileWindow.opener = null
+
+    try {
+      const result = await api.get<{ data: { url: string } }>(`/documents/${doc.id}/file`)
+      if (fileWindow) {
+        fileWindow.location.href = result.data.url
+      } else {
+        window.location.href = result.data.url
+      }
+    } catch (err: any) {
+      fileWindow?.close()
+      showToast(err.message ?? 'Não foi possível abrir o arquivo.', 'error')
+    }
+  }
+
   return (
     <div>
       <Header title="Documentos Pessoais" />
       <div style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Documentos Pessoais</div>
-          <Button variant="primary">+ Adicionar</Button>
+          <Button variant="primary" onClick={() => setIsCreateOpen(true)}>+ Adicionar</Button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -78,7 +109,11 @@ export default function PersonalDocsPage() {
                     <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{fmtDate(doc.expiresAt)}</td>
                     <td style={{ padding: '9px 12px' }}>{statusBadge(doc.status)}</td>
                     <td style={{ padding: '9px 12px' }}>
-                      <Button size="sm" variant={doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'primary' : 'secondary'}>
+                      <Button
+                        size="sm"
+                        variant={doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'primary' : 'secondary'}
+                        onClick={() => openDocument(doc)}
+                      >
                         {doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'Renovar' : 'Abrir'}
                       </Button>
                     </td>
@@ -92,6 +127,13 @@ export default function PersonalDocsPage() {
           </div>
         )}
       </div>
+
+      <CreateDocumentModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={load}
+        type="PERSONAL"
+      />
     </div>
   )
 }

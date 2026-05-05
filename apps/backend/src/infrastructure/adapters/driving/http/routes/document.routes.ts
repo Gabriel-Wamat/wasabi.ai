@@ -30,6 +30,50 @@ const listQuery = z.object({
   order:    z.enum(['asc', 'desc']).default('desc'),
 })
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+const allowedUploadMimeTypes = new Set([
+  'application/pdf',
+  'text/csv',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+])
+
+const allowedUploadExtensions = new Set([
+  '.pdf',
+  '.csv',
+  '.txt',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+])
+
+function getFileExtension(filename: string) {
+  const dotIndex = filename.lastIndexOf('.')
+  return dotIndex >= 0 ? filename.slice(dotIndex).toLowerCase() : ''
+}
+
+function normalizeStorageFilename(filename: string) {
+  return filename
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    || 'arquivo'
+}
+
 export async function documentRoutes(app: FastifyInstance, { container }: { container: Container }) {
   app.addHook('onRequest', authMiddleware)
 
@@ -54,6 +98,19 @@ export async function documentRoutes(app: FastifyInstance, { container }: { cont
     return reply.send({ data: doc })
   })
 
+  app.get('/:id/file', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const userId = getUserId(req)
+    const doc    = await container.getDocument.execute(id, userId)
+
+    if (!doc.fileUrl) {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Este documento ainda não possui arquivo anexado' } })
+    }
+
+    const url = await container.s3.getPresignedUrl(doc.fileUrl)
+    return reply.send({ data: { url } })
+  })
+
   app.put('/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
     const body   = updateBody.parse(req.body)
@@ -76,7 +133,17 @@ export async function documentRoutes(app: FastifyInstance, { container }: { cont
     if (!data) return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'Arquivo obrigatório' } })
 
     const buffer  = await data.toBuffer()
-    const key     = `documents/${userId}/${id}/${data.filename}`
+    const extension = getFileExtension(data.filename)
+
+    if (!allowedUploadMimeTypes.has(data.mimetype) || !allowedUploadExtensions.has(extension)) {
+      return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'Formato de arquivo não permitido' } })
+    }
+
+    if (buffer.length > MAX_UPLOAD_BYTES) {
+      return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'Arquivo acima do limite de 10MB' } })
+    }
+
+    const key     = `documents/${userId}/${id}/${Date.now()}-${normalizeStorageFilename(data.filename)}`
     await container.s3.upload(key, buffer, data.mimetype)
     const url     = await container.s3.getPresignedUrl(key)
     await container.updateDocument.execute(id, userId, { fileUrl: key })

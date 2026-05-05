@@ -26,6 +26,10 @@ export function Filter({ label, options, value, onChange, fullWidth = false }: F
         style={{
           padding: '8px 12px',
           background: 'var(--s1)',
+          backgroundImage: 'linear-gradient(45deg, transparent 50%, var(--t2) 50%), linear-gradient(135deg, var(--t2) 50%, transparent 50%)',
+          backgroundPosition: 'calc(100% - 18px) 50%, calc(100% - 12px) 50%',
+          backgroundSize: '6px 6px, 6px 6px',
+          backgroundRepeat: 'no-repeat',
           border: '1px solid var(--bd)',
           borderRadius: '8px',
           color: 'var(--tx)',
@@ -34,8 +38,10 @@ export function Filter({ label, options, value, onChange, fullWidth = false }: F
           outline: 'none',
           width: fullWidth ? '100%' : '180px',
           transition: 'border-color 0.2s',
+          appearance: 'none',
+          WebkitAppearance: 'none',
         }}
-        onFocus={(e) => e.currentTarget.style.borderColor = '#7FB069'}
+        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--gr)'}
         onBlur={(e) => e.currentTarget.style.borderColor = 'var(--bd)'}
       >
         {options.map(option => (
@@ -77,7 +83,7 @@ export function DateFilter({ label, value, onChange, fullWidth = false }: DateFi
           width: fullWidth ? '100%' : '180px',
           transition: 'border-color 0.2s',
         }}
-        onFocus={(e) => e.currentTarget.style.borderColor = '#7FB069'}
+        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--gr)'}
         onBlur={(e) => e.currentTarget.style.borderColor = 'var(--bd)'}
       />
     </div>
@@ -114,7 +120,7 @@ export function SearchFilter({ placeholder, value, onChange, fullWidth = false }
             width: '100%',
             transition: 'border-color 0.2s',
           }}
-          onFocus={(e) => e.currentTarget.style.borderColor = '#7FB069'}
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--gr)'}
           onBlur={(e) => e.currentTarget.style.borderColor = 'var(--bd)'}
         />
         <svg
@@ -169,8 +175,8 @@ export function FilterBar({ children, onClear }: FilterBarProps) {
             marginLeft: 'auto',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.borderColor = '#ef4444'
-            e.currentTarget.style.color = '#ef4444'
+            e.currentTarget.style.borderColor = 'var(--rd)'
+            e.currentTarget.style.color = 'var(--rd)'
           }}
           onMouseLeave={e => {
             e.currentTarget.style.borderColor = 'var(--bd)'

@@ -3,6 +3,8 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { IStorageRepository } from '../../../../application/ports/outbound/storage.repository'
@@ -10,6 +12,7 @@ import { IStorageRepository } from '../../../../application/ports/outbound/stora
 export class S3Adapter implements IStorageRepository {
   private client: S3Client
   private bucket: string
+  private bucketReady?: Promise<void>
 
   constructor(config: {
     endpoint:  string
@@ -30,7 +33,20 @@ export class S3Adapter implements IStorageRepository {
     })
   }
 
+  private async ensureBucket(): Promise<void> {
+    if (!this.bucketReady) {
+      this.bucketReady = this.client.send(new HeadBucketCommand({ Bucket: this.bucket }))
+        .then(() => undefined)
+        .catch(async () => {
+          await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }))
+        })
+    }
+
+    return this.bucketReady
+  }
+
   async upload(key: string, buffer: Buffer, mimetype: string): Promise<string> {
+    await this.ensureBucket()
     await this.client.send(new PutObjectCommand({
       Bucket:      this.bucket,
       Key:         key,

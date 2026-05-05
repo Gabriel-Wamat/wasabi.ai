@@ -5,6 +5,7 @@ import { Document, PaginatedResponse } from '@/types'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { statusBadge } from '@/components/ui/Badge'
+import { CreateDocumentModal } from '@/components/documents/CreateDocumentModal'
 
 function fmtDate(d: string | null) {
   if (!d) return '—'
@@ -15,8 +16,9 @@ export default function WorkDocsPage() {
   const [docs, setDocs]     = useState<Document[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true)
     const params = new URLSearchParams({ type: 'WORK', limit: '50' })
     if (search) params.set('search', search)
@@ -24,7 +26,9 @@ export default function WorkDocsPage() {
       .then(r => setDocs(r.data))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [search])
+  }
+
+  useEffect(() => { load() }, [search])
 
   return (
     <div>
@@ -32,7 +36,7 @@ export default function WorkDocsPage() {
       <div style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Documentos de Trabalho</div>
-          <Button variant="primary">+ Adicionar</Button>
+          <Button variant="primary" onClick={() => setIsCreateOpen(true)}>+ Adicionar</Button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -78,6 +82,13 @@ export default function WorkDocsPage() {
           </div>
         )}
       </div>
+
+      <CreateDocumentModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={load}
+        type="WORK"
+      />
     </div>
   )
 }
