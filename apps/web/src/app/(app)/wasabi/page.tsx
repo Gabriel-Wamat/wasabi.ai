@@ -251,7 +251,7 @@ export default function WasabiPage() {
         </section>
       </main>
 
-      <style jsx global>{`
+      <style>{`
         .wasabi-page {
           padding: 16px 16px 24px 0;
           min-height: calc(100vh - 80px);

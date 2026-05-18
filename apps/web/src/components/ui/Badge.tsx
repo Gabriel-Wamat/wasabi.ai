@@ -1,23 +1,9 @@
-import { clsx } from 'clsx'
-
 type Variant = 'green' | 'yellow' | 'red' | 'blue' | 'gray'
 
-const styles: Record<Variant, { background: string; color: string }> = {
-  green:  { background: '#0a2318', color: '#11C76F' },
-  yellow: { background: '#2a1e00', color: '#FFC107' },
-  red:    { background: '#2a0808', color: '#FF4757' },
-  blue:   { background: '#071828', color: '#4A90D9' },
-  gray:   { background: '#222',    color: '#888' },
-}
-
-export function Badge({ variant, children }: { variant: Variant; children: React.ReactNode }) {
-  const s = styles[variant]
+export function Badge({ variant = 'gray', children, dot = true }: { variant?: string; children: React.ReactNode; dot?: boolean }) {
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', padding: '2px 8px',
-      borderRadius: 6, fontSize: 10, fontWeight: 600, letterSpacing: '.03em',
-      ...s,
-    }}>
+    <span className={`badge ${variant}`}>
+      {dot && <span className="dot" />}
       {children}
     </span>
   )

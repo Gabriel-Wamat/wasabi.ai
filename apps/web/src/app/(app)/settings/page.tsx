@@ -321,7 +321,7 @@ export default function SettingsPage() {
         </section>
       </main>
 
-      <style jsx>{`
+      <style>{`
         .settings-page {
           padding: 18px 16px 28px 0;
           max-width: 920px;

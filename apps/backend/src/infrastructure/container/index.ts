@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { RedisAdapter } from '../adapters/driven/cache/redis.adapter'
-import { S3Adapter } from '../adapters/driven/storage/s3.adapter'
+import { InMemoryCacheAdapter } from '../adapters/driven/cache/in-memory.adapter'
+import { LocalFsStorageAdapter } from '../adapters/driven/storage/local-fs.adapter'
 import { PrismaDocumentRepository } from '../adapters/driven/database/repositories/prisma-document.repository'
 import { PrismaProjectRepository } from '../adapters/driven/database/repositories/prisma-project.repository'
 import { PrismaTransactionRepository } from '../adapters/driven/database/repositories/prisma-transaction.repository'
@@ -35,8 +35,8 @@ import { ChangePasswordUseCase } from '../../application/use-cases/user/change-p
 import { IbgeAdapter } from '../adapters/driven/external/ibge.adapter'
 import { GetIpcaComparisonUseCase } from '../../application/use-cases/financial/get-ipca-comparison'
 import { createLlmAdapter } from '../adapters/driven/llm/llm-adapter.factory'
-import { OpenAiEmbeddingAdapter } from '../adapters/driven/embeddings/openai-embedding.adapter'
-import { PrismaVectorContextRepository } from '../adapters/driven/database/repositories/prisma-vector-context.repository'
+import { TransformersEmbeddingAdapter } from '../adapters/driven/embeddings/transformers-embedding.adapter'
+import { SqliteVecVectorRepository } from '../adapters/driven/database/repositories/sqlite-vec-vector.repository'
 import { PrismaChatRepository } from '../adapters/driven/database/repositories/prisma-chat.repository'
 import { PrismaLlmSettingsRepository } from '../adapters/driven/database/repositories/prisma-llm-settings.repository'
 import { ChatContextBuilder } from '../../application/services/chat-context-builder'
@@ -46,22 +46,43 @@ import { DeleteConversationUseCase } from '../../application/use-cases/chat/dele
 import { RenameConversationUseCase } from '../../application/use-cases/chat/rename-conversation'
 import { GetMessagesUseCase } from '../../application/use-cases/chat/get-messages'
 import { SendMessageUseCase } from '../../application/use-cases/chat/send-message'
+import { getPaths } from '../../shared/paths'
+import { randomBytes } from 'node:crypto'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+
+/**
+ * Lê (ou cria) um secret estável persistido em config.json.
+ * Usado para HMAC de URLs de arquivo, JWT em modo local, etc.
+ */
+function getOrCreateLocalSecret(configFile: string, key: string): string {
+  let config: Record<string, string> = {}
+  if (existsSync(configFile)) {
+    try { config = JSON.parse(readFileSync(configFile, 'utf-8')) } catch { config = {} }
+  }
+  if (!config[key]) {
+    config[key] = randomBytes(32).toString('hex')
+    writeFileSync(configFile, JSON.stringify(config, null, 2))
+  }
+  return config[key]
+}
 
 export function buildContainer() {
+  const paths = getPaths()
+
+  /* DATABASE_URL pode vir do env (dev) ou ser derivado dos paths (release). */
+  const dbUrl = process.env.DATABASE_URL?.startsWith('file:')
+    ? process.env.DATABASE_URL
+    : `file:${paths.databaseFile}`
+
   const prisma = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    datasources: { db: { url: dbUrl } },
   })
 
-  const redis = new RedisAdapter(process.env.REDIS_URL ?? 'redis://localhost:6379')
+  const cache = new InMemoryCacheAdapter()
 
-  const s3 = new S3Adapter({
-    endpoint:       process.env.S3_ENDPOINT ?? 'http://localhost:9000',
-    publicEndpoint: process.env.S3_PUBLIC_ENDPOINT ?? process.env.S3_ENDPOINT ?? 'http://localhost:9000',
-    region:         process.env.S3_REGION ?? 'us-east-1',
-    bucket:         process.env.S3_BUCKET ?? 'personalhub-dev',
-    accessKey:      process.env.S3_ACCESS_KEY ?? 'minio_user',
-    secretKey:      process.env.S3_SECRET_KEY ?? 'minio_pass',
-  })
+  const fileSigningSecret = getOrCreateLocalSecret(paths.configFile, 'fileSigningSecret')
+  const storage = new LocalFsStorageAdapter(paths.filesDir, fileSigningSecret)
 
   const docRepo  = new PrismaDocumentRepository(prisma)
   const projRepo = new PrismaProjectRepository(prisma)
@@ -70,26 +91,31 @@ export function buildContainer() {
   const userRepo = new PrismaUserRepository(prisma)
   const catRepo  = new PrismaCategoryRepository(prisma)
   const chatRepo = new PrismaChatRepository(prisma)
-  const llmSettingsRepo = new PrismaLlmSettingsRepository(
-    prisma,
-    process.env.LLM_SETTINGS_SECRET ?? process.env.JWT_SECRET ?? 'dev-only-llm-settings-secret',
-  )
-  const vectorRepo = new PrismaVectorContextRepository(prisma)
-  const ibge     = new IbgeAdapter(redis)
-  const llm      = createLlmAdapter(process.env)
-  const embeddings = new OpenAiEmbeddingAdapter({
-    apiKey: process.env.EMBEDDINGS_PROVIDER === 'openai' || process.env.LLM_PROVIDER === 'openai'
-      ? process.env.OPENAI_API_KEY
-      : undefined,
-    model: process.env.OPENAI_EMBEDDING_MODEL ?? 'text-embedding-3-small',
-    baseUrl: process.env.OPENAI_BASE_URL,
+
+  const llmSettingsSecret = getOrCreateLocalSecret(paths.configFile, 'llmSettingsSecret')
+  const llmSettingsRepo = new PrismaLlmSettingsRepository(prisma, llmSettingsSecret)
+
+  const vectorRepo = new SqliteVecVectorRepository({
+    dbFile:    paths.databaseFile,
+    dimension: 384,
   })
+
+  const ibge = new IbgeAdapter(cache)
+  const llm  = createLlmAdapter(process.env)
+
+  const embeddings = new TransformersEmbeddingAdapter({
+    modelsDir: paths.modelsDir,
+  })
+
   const chatContext = new ChatContextBuilder(userRepo, docRepo, projRepo, txRepo, goalRepo, embeddings, vectorRepo)
 
   return {
     prisma,
-    redis,
-    s3,
+    cache,
+    /** alias mantido por compatibilidade com rotas existentes (`container.s3`). */
+    s3: storage,
+    storage,
+    paths,
     register: new RegisterUseCase(userRepo),
     login:    new LoginUseCase(userRepo),
     createDocument: new CreateDocumentUseCase(docRepo),
@@ -102,13 +128,13 @@ export function buildContainer() {
     updateProjectProgress: new UpdateProjectProgressUseCase(projRepo),
     updateProject:         new UpdateProjectUseCase(projRepo),
     deleteProject:         new DeleteProjectUseCase(projRepo),
-    createTransaction:   new CreateTransactionUseCase(txRepo, redis),
+    createTransaction:   new CreateTransactionUseCase(txRepo, cache, catRepo),
     listTransactions:    new ListTransactionsUseCase(txRepo),
-    updateTransaction:   new UpdateTransactionUseCase(txRepo, redis),
-    deleteTransaction:   new DeleteTransactionUseCase(txRepo, redis),
-    getFinancialSummary: new GetFinancialSummaryUseCase(txRepo, redis),
-    getIpcaComparison:   new GetIpcaComparisonUseCase(txRepo, catRepo, ibge, redis),
-    getDashboardOverview: new GetDashboardOverviewUseCase(docRepo, projRepo, txRepo, goalRepo, redis),
+    updateTransaction:   new UpdateTransactionUseCase(txRepo, catRepo, cache),
+    deleteTransaction:   new DeleteTransactionUseCase(txRepo, cache),
+    getFinancialSummary: new GetFinancialSummaryUseCase(txRepo, cache),
+    getIpcaComparison:   new GetIpcaComparisonUseCase(txRepo, catRepo, ibge, cache),
+    getDashboardOverview: new GetDashboardOverviewUseCase(docRepo, projRepo, txRepo, goalRepo, cache),
     createCategory: new CreateCategoryUseCase(catRepo),
     listCategories: new ListCategoriesUseCase(catRepo),
     updateCategory: new UpdateCategoryUseCase(catRepo),
@@ -121,7 +147,7 @@ export function buildContainer() {
     deleteConversation:  new DeleteConversationUseCase(chatRepo),
     renameConversation:  new RenameConversationUseCase(chatRepo),
     getChatMessages:     new GetMessagesUseCase(chatRepo),
-    sendChatMessage:     new SendMessageUseCase(chatRepo, llm, redis, chatContext, llmSettingsRepo, process.env),
+    sendChatMessage:     new SendMessageUseCase(chatRepo, llm, cache, chatContext, llmSettingsRepo, process.env),
     llm,
     llmSettingsRepo,
     goalRepo,

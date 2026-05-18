@@ -3,21 +3,33 @@ interface StatCardProps {
   value:    string | number
   sub?:     string
   color?:   string
+  trend?:   string
+  trendUp?: boolean
+  icon?:    string
 }
 
-export function StatCard({ label, value, sub, color }: StatCardProps) {
+export function StatCard({ label, value, sub, color, trend, trendUp }: StatCardProps) {
   return (
-    <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, padding: 14 }}>
-      <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 21, fontWeight: 600, color: color ?? 'var(--tx)' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 3 }}>{sub}</div>}
+    <div className="stat-card">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value" style={color ? { color } : undefined}>{value}</div>
+      {(sub || trend) && (
+        <div className="stat-sub">
+          {trend && (
+            <span className={`stat-trend ${trendUp ? 'up' : 'down'}`}>
+              {trendUp ? '↑' : '↓'} {trend}
+            </span>
+          )}
+          {sub && <span>{sub}</span>}
+        </div>
+      )}
     </div>
   )
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, padding: 16, ...style }}>
+    <div className="card" style={style}>
       {children}
     </div>
   )

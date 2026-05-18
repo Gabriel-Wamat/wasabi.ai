@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/api/client'
 
-type CalendarFilter = 'all' | 'today' | 'week' | 'meetings' | 'allDay'
+type CalendarFilter = 'all' | 'today' | 'week' | 'meetings' | 'allDay' | 'date'
 
 interface CalendarAttendee {
   email?: string
@@ -123,6 +123,103 @@ const filterOptions: { value: CalendarFilter; label: string }[] = [
   { value: 'allDay', label: 'Dia inteiro' },
 ]
 
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+function MonthCalendar({
+  events,
+  selectedDate,
+  onSelectDate,
+}: {
+  events: CalendarEvent[]
+  selectedDate: Date | null
+  onSelectDate: (date: Date | null) => void
+}) {
+  const today = new Date()
+  const [viewYear, setViewYear] = useState(today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(today.getMonth())
+
+  // Days that have events
+  const eventDays = useMemo(() => {
+    const s = new Set<string>()
+    events.forEach(ev => {
+      const d = toDate(ev.start)
+      if (d && d.getFullYear() === viewYear && d.getMonth() === viewMonth) {
+        s.add(d.getDate().toString())
+      }
+    })
+    return s
+  }, [events, viewYear, viewMonth])
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
+    else setViewMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
+    else setViewMonth(m => m + 1)
+  }
+
+  // Build grid: start from Sunday of the first week
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const cells: (number | null)[] = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  function handleDay(day: number) {
+    const clicked = new Date(viewYear, viewMonth, day)
+    if (selectedDate && isSameDay(selectedDate, clicked)) {
+      onSelectDate(null) // deselect
+    } else {
+      onSelectDate(clicked)
+    }
+  }
+
+  const isSelectedDay = (day: number) => {
+    if (!selectedDate) return false
+    return selectedDate.getFullYear() === viewYear &&
+           selectedDate.getMonth() === viewMonth &&
+           selectedDate.getDate() === day
+  }
+
+  const isTodayDay = (day: number) =>
+    today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day
+
+  return (
+    <div className="month-cal">
+      <div className="month-cal-head">
+        <button className="month-cal-nav" onClick={prevMonth} title="Mês anterior">‹</button>
+        <span className="month-cal-title">{MONTHS_PT[viewMonth]} {viewYear}</span>
+        <button className="month-cal-nav" onClick={nextMonth} title="Próximo mês">›</button>
+      </div>
+      <div className="month-cal-grid">
+        {WEEKDAYS.map(w => (
+          <div key={w} className="month-cal-weekday">{w}</div>
+        ))}
+        {cells.map((day, i) => {
+          if (!day) return <div key={`empty-${i}`} />
+          const hasEv  = eventDays.has(day.toString())
+          const sel    = isSelectedDay(day)
+          const tod    = isTodayDay(day)
+          return (
+            <button
+              key={day}
+              className={`month-cal-day${sel ? ' sel' : ''}${tod && !sel ? ' today' : ''}`}
+              onClick={() => handleDay(day)}
+              title={hasEv ? 'Há eventos neste dia' : undefined}
+            >
+              {day}
+              {hasEv && <span className="month-cal-dot" />}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function CalendarPage() {
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -132,6 +229,13 @@ export default function CalendarPage() {
   const [filter, setFilter] = useState<CalendarFilter>('all')
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+
+  function handleSelectDate(date: Date | null) {
+    setSelectedDate(date)
+    if (date) setFilter('date')
+    else setFilter('all')
+  }
 
   async function loadEvents() {
     setLoadingEvents(true)
@@ -252,6 +356,7 @@ export default function CalendarPage() {
           || (filter === 'week' && !!start && isWithinDays(start, 7))
           || (filter === 'meetings' && (kind === 'Meet' || kind === 'Reunião'))
           || (filter === 'allDay' && event.isAllDay)
+          || (filter === 'date' && !!start && !!selectedDate && isSameDay(start, selectedDate))
 
       const text = [event.title, event.location, cleanDescription(event.description)]
         .filter(Boolean)
@@ -284,7 +389,7 @@ export default function CalendarPage() {
     return (
       <main className="calendar-page">
         <section className="calendar-loading">Carregando agenda...</section>
-        <style jsx>{calendarStyles}</style>
+        <style>{calendarStyles}</style>
       </main>
     )
   }
@@ -349,11 +454,20 @@ export default function CalendarPage() {
                 <button
                   key={option.value}
                   className={filter === option.value ? 'active' : ''}
-                  onClick={() => setFilter(option.value)}
+                  onClick={() => { setFilter(option.value); setSelectedDate(null) }}
                 >
                   {option.label}
                 </button>
               ))}
+              {filter === 'date' && selectedDate && (
+                <button
+                  className="active"
+                  onClick={() => { setFilter('all'); setSelectedDate(null) }}
+                  title="Limpar filtro de data"
+                >
+                  {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} ✕
+                </button>
+              )}
             </div>
             <input
               value={query}
@@ -362,6 +476,12 @@ export default function CalendarPage() {
               aria-label="Buscar eventos"
             />
           </section>
+
+          <MonthCalendar
+            events={events}
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
+          />
 
           <section className="calendar-layout">
             <div className="agenda-panel">
@@ -481,185 +601,198 @@ export default function CalendarPage() {
         </>
       )}
 
-      <style jsx>{calendarStyles}</style>
+      <style>{calendarStyles}</style>
     </main>
   )
 }
 
 const calendarStyles = `
+  /* ── Page shell ── */
   .calendar-page {
     display: grid;
-    gap: 18px;
-    min-height: 100vh;
-    padding: 26px 32px 40px;
+    gap: 12px;
+    padding: 16px 0 32px;
     color: var(--tx);
   }
 
+  /* ── Shared card base ── */
   .calendar-header,
   .calendar-connect-card,
   .calendar-toolbar,
   .agenda-panel,
   .event-detail-panel,
   .calendar-loading {
-    background: rgba(24, 24, 24, 0.88);
+    background: rgba(20, 20, 20, 0.9);
     border: 1px solid var(--bd);
-    border-radius: 12px;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    border-radius: 10px;
   }
 
+  /* ── Header ── */
   .calendar-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
-    padding: 22px 24px;
+    gap: 12px;
+    padding: 14px 18px;
   }
 
   .calendar-eyebrow {
-    margin: 0 0 4px;
+    margin: 0 0 2px;
     color: var(--gr);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
-  .calendar-header h1,
-  .calendar-connect-card h2,
-  .agenda-panel h2,
-  .event-detail-panel h2 {
+  .calendar-header h1 {
     margin: 0;
-    font-size: 24px;
-    line-height: 1.05;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
   }
 
-  .calendar-header span,
-  .calendar-connect-card p,
-  .panel-head p,
-  .event-detail-panel p,
-  .summary-card small,
-  .summary-card span,
-  .agenda-meta,
-  .agenda-description,
-  .detail-grid span,
-  .attendee-list span {
-    color: var(--t2);
-  }
-
-  .calendar-header span,
+  .calendar-header > div > span,
   .panel-head p {
     display: block;
-    margin-top: 6px;
-    font-size: 13px;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--t2);
   }
 
   .calendar-actions,
   .detail-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
+  /* ── Buttons ── */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
-    padding: 0 16px;
-    border-radius: 8px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 7px;
     border: 1px solid var(--bd);
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
-    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    white-space: nowrap;
+    transition: opacity 120ms ease, background 120ms ease;
   }
-
-  .btn:hover { transform: translateY(-1px); }
-  .btn:disabled { cursor: not-allowed; opacity: 0.58; transform: none; }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { cursor: not-allowed; opacity: 0.45; }
   .btn.primary { background: var(--gr); border-color: transparent; color: #04120a; }
   .btn.secondary { background: var(--s2); color: var(--tx); }
-  .btn.danger { background: rgba(255, 69, 88, 0.12); border-color: rgba(255, 69, 88, 0.42); color: var(--rd); }
+  .btn.danger { background: rgba(240, 85, 108, 0.1); border-color: rgba(240, 85, 108, 0.3); color: var(--rd); }
 
+  /* ── Error ── */
   .calendar-error {
-    padding: 14px 16px;
-    border: 1px solid rgba(255, 69, 88, 0.42);
-    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid rgba(240, 85, 108, 0.35);
+    border-radius: 8px;
     color: var(--rd);
-    background: rgba(255, 69, 88, 0.1);
-    font-weight: 700;
+    background: rgba(240, 85, 108, 0.08);
+    font-size: 13px;
+    font-weight: 600;
   }
 
+  /* ── Connect / Loading card ── */
   .calendar-connect-card,
   .calendar-loading {
-    display: grid;
-    justify-items: center;
-    gap: 12px;
-    padding: 52px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 32px 24px;
     text-align: center;
   }
 
   .calendar-connect-mark {
     display: grid;
-    width: 58px;
-    height: 58px;
+    width: 40px;
+    height: 40px;
     place-items: center;
-    border: 1px solid rgba(17, 199, 111, 0.35);
-    border-radius: 14px;
-    background: rgba(17, 199, 111, 0.1);
+    border: 1px solid rgba(17, 199, 111, 0.3);
+    border-radius: 10px;
+    background: rgba(17, 199, 111, 0.08);
     color: var(--gr);
-    font-weight: 900;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
   }
 
-  .calendar-connect-card p { max-width: 520px; margin: 0 0 8px; }
+  .calendar-connect-card h2 {
+    margin: 4px 0 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
 
+  .calendar-connect-card p {
+    max-width: 380px;
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: var(--t2);
+    line-height: 1.5;
+  }
+
+  /* ── Summary grid ── */
   .calendar-summary-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+    gap: 10px;
   }
 
   .summary-card {
-    display: grid;
-    gap: 6px;
-    min-height: 116px;
-    padding: 18px;
-    background: rgba(24, 24, 24, 0.88);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: rgba(20, 20, 20, 0.9);
     border: 1px solid var(--bd);
     border-radius: 10px;
   }
 
-  .summary-card.strong { border-color: rgba(17, 199, 111, 0.35); }
-  .summary-card span { font-size: 13px; font-weight: 700; }
-  .summary-card strong { font-size: 30px; line-height: 1; }
-  .summary-card small { font-size: 12px; }
+  .summary-card.strong { border-color: rgba(17, 199, 111, 0.28); }
+  .summary-card span { font-size: 11px; font-weight: 600; color: var(--t2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .summary-card strong { font-size: 22px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; margin-top: 2px; }
+  .summary-card small { font-size: 11px; color: var(--t3); margin-top: 1px; }
 
+  /* ── Toolbar ── */
   .calendar-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 14px;
+    gap: 12px;
+    padding: 10px 12px;
   }
 
   .calendar-filters {
     display: flex;
-    gap: 6px;
-    padding: 4px;
+    gap: 3px;
+    padding: 3px;
     border: 1px solid var(--bd);
-    border-radius: 10px;
+    border-radius: 8px;
     background: var(--s1);
   }
 
   .calendar-filters button {
-    height: 36px;
-    padding: 0 12px;
+    height: 28px;
+    padding: 0 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 6px;
     background: transparent;
     color: var(--t2);
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
+    transition: background 120ms, color 120ms;
   }
 
   .calendar-filters button.active {
@@ -669,108 +802,219 @@ const calendarStyles = `
 
   .calendar-toolbar input {
     flex: 1;
-    max-width: 420px;
-    height: 44px;
-    padding: 0 14px;
+    max-width: 360px;
+    height: 34px;
+    padding: 0 12px;
     border: 1px solid var(--bd);
-    border-radius: 10px;
+    border-radius: 8px;
     background: var(--s1);
     color: var(--tx);
     font: inherit;
+    font-size: 13px;
     outline: none;
+    transition: border-color 120ms;
   }
 
-  .calendar-toolbar input:focus { border-color: rgba(17, 199, 111, 0.48); }
+  .calendar-toolbar input:focus { border-color: rgba(17, 199, 111, 0.45); }
 
+  /* ── Month calendar ── */
+  .month-cal {
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid var(--bd);
+    border-radius: 10px;
+    padding: 12px 16px;
+    user-select: none;
+  }
+
+  .month-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .month-cal-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .month-cal-nav {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--bd);
+    border-radius: 6px;
+    background: var(--s2);
+    color: var(--t2);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .month-cal-nav:hover { background: var(--s3); color: var(--tx); }
+
+  .month-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .month-cal-weekday {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 0 6px;
+  }
+
+  .month-cal-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 32px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--t2);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .month-cal-day:hover { background: rgba(255,255,255,.04); color: var(--tx); }
+  .month-cal-day.today { color: var(--gr); font-weight: 700; }
+  .month-cal-day.sel {
+    background: rgba(17, 199, 111, 0.16);
+    color: var(--gr);
+    font-weight: 700;
+    border: 1px solid rgba(17, 199, 111, 0.32);
+  }
+
+  .month-cal-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--gr);
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+
+  /* ── Layout: agenda + detail ── */
   .calendar-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
     align-items: start;
   }
 
   .agenda-panel,
   .event-detail-panel {
     min-width: 0;
-    padding: 20px;
+    padding: 16px;
   }
 
   .event-detail-panel {
     position: sticky;
-    top: 20px;
+    top: 16px;
     display: grid;
-    gap: 18px;
+    gap: 14px;
+  }
+
+  .event-detail-panel h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
   }
 
   .panel-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+  }
+
+  .agenda-panel h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
   }
 
   .agenda-groups {
     display: grid;
-    gap: 18px;
+    gap: 14px;
   }
 
   .agenda-group h3 {
-    margin: 0 0 10px;
+    margin: 0 0 8px;
     color: var(--t2);
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: 0.1em;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
   .agenda-list {
     display: grid;
     border: 1px solid var(--bd);
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
   }
 
   .agenda-item {
     display: grid;
-    grid-template-columns: 116px minmax(0, 1fr);
-    gap: 18px;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 12px;
     width: 100%;
-    padding: 16px 18px;
+    padding: 11px 14px;
     border: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255,255,255,.05);
     background: transparent;
     color: var(--tx);
     text-align: left;
     cursor: pointer;
-    transition: background 160ms ease;
+    transition: background 120ms;
   }
 
   .agenda-item:last-child { border-bottom: 0; }
-  .agenda-item:hover { background: rgba(255, 255, 255, 0.03); }
-  .agenda-item.selected { background: rgba(17, 199, 111, 0.08); }
+  .agenda-item:hover { background: rgba(255,255,255,.025); }
+  .agenda-item.selected { background: rgba(17, 199, 111, 0.07); }
 
   .agenda-time {
     color: var(--t2);
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1.3;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
   }
 
   .agenda-main,
   .agenda-title-row {
     display: grid;
     min-width: 0;
-    gap: 6px;
+    gap: 4px;
   }
 
   .agenda-title-row {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+    gap: 8px;
   }
 
   .agenda-title-row strong {
     overflow: hidden;
-    font-size: 15px;
+    font-size: 13px;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -779,18 +1023,19 @@ const calendarStyles = `
   .detail-topline span {
     width: max-content;
     border-radius: 999px;
-    border: 1px solid rgba(17, 199, 111, 0.32);
-    padding: 4px 8px;
+    border: 1px solid rgba(17, 199, 111, 0.28);
+    padding: 2px 7px;
     color: var(--gr);
-    background: rgba(17, 199, 111, 0.08);
-    font-size: 11px;
-    font-weight: 800;
+    background: rgba(17, 199, 111, 0.07);
+    font-size: 10px;
+    font-weight: 700;
   }
 
   .agenda-meta,
   .agenda-description {
     overflow: hidden;
-    font-size: 13px;
+    font-size: 12px;
+    color: var(--t2);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -798,66 +1043,46 @@ const calendarStyles = `
   .detail-topline {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
   }
 
-  .detail-grid {
-    display: grid;
-    gap: 10px;
-  }
+  .detail-grid { display: grid; gap: 0; }
 
   .detail-grid div {
     display: grid;
-    grid-template-columns: 86px minmax(0, 1fr);
-    gap: 10px;
-    align-items: start;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-
-  .detail-grid strong {
-    overflow-wrap: anywhere;
-    font-size: 13px;
-  }
-
-  .detail-section {
-    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
     gap: 8px;
-    padding-top: 2px;
+    align-items: start;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
   }
 
-  .detail-section h3 {
-    margin: 0;
-    font-size: 13px;
-  }
+  .detail-grid div:last-child { border-bottom: 0; }
 
+  .detail-grid span { font-size: 11px; color: var(--t2); font-weight: 500; padding-top: 1px; }
+  .detail-grid strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 600; }
+
+  .detail-section { display: grid; gap: 6px; }
+  .detail-section h3 { margin: 0; font-size: 11px; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: 0.07em; }
   .detail-section p {
     display: -webkit-box;
-    max-height: 146px;
     margin: 0;
     overflow: hidden;
-    font-size: 13px;
-    line-height: 1.55;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 6;
-  }
-
-  .attendee-list {
-    display: grid;
-    gap: 8px;
-  }
-
-  .attendee-list span {
-    overflow: hidden;
     font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.55;
+    color: var(--t2);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
   }
+
+  .attendee-list { display: grid; gap: 6px; }
+  .attendee-list span { overflow: hidden; font-size: 12px; color: var(--t2); text-overflow: ellipsis; white-space: nowrap; }
 
   .agenda-empty {
-    padding: 34px 16px;
-    color: var(--t2);
+    padding: 24px 16px;
+    color: var(--t3);
     text-align: center;
+    font-size: 13px;
   }
 
   @media (max-width: 1120px) {
@@ -867,15 +1092,13 @@ const calendarStyles = `
   }
 
   @media (max-width: 760px) {
-    .calendar-page { padding: 18px; }
-    .calendar-header,
-    .calendar-toolbar { align-items: stretch; flex-direction: column; }
-    .calendar-actions,
-    .detail-actions { flex-direction: column; align-items: stretch; }
-    .calendar-summary-grid { grid-template-columns: 1fr; }
+    .calendar-page { padding: 12px 0 24px; }
+    .calendar-header, .calendar-toolbar { flex-direction: column; align-items: stretch; }
+    .calendar-actions, .detail-actions { flex-direction: column; align-items: stretch; }
+    .calendar-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .calendar-filters { overflow-x: auto; }
     .calendar-toolbar input { max-width: none; }
-    .agenda-item { grid-template-columns: 1fr; gap: 8px; }
+    .agenda-item { grid-template-columns: 1fr; gap: 6px; }
     .agenda-title-row { grid-template-columns: 1fr; }
   }
 `

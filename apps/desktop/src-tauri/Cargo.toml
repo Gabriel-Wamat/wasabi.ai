@@ -1,12 +1,12 @@
 [package]
-name = "personal-hub"
+name = "wasabi"
 version = "1.0.0"
-description = "Personal Hub — Plataforma centralizada de informações pessoais"
-authors = ["Personal Hub"]
+description = "Wasabi — Plataforma centralizada de gestão pessoal"
+authors = ["Wasabi"]
 edition = "2021"
 
 [lib]
-name = "personal_hub_lib"
+name = "wasabi_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -40,13 +40,18 @@ export class PrismaChatRepository implements IChatRepository {
     return row ? toConv(row) : null
   }
 
-  async listConversations(userId: string): Promise<ChatConversation[]> {
-    const rows = await this.prisma.chatConversation.findMany({
-      where: { userId, archivedAt: null },
-      orderBy: { updatedAt: 'desc' },
-      take: 100,
-    })
-    return rows.map(toConv)
+  async listConversations(userId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit
+    const [rows, total] = await Promise.all([
+      this.prisma.chatConversation.findMany({
+        where: { userId, archivedAt: null },
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.chatConversation.count({ where: { userId, archivedAt: null } }),
+    ])
+    return { data: rows.map(toConv), total }
   }
 
   async updateConversationTitle(id: string, userId: string, title: string): Promise<ChatConversation> {

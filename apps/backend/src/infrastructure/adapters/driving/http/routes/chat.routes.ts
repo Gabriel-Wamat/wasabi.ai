@@ -18,8 +18,12 @@ export async function chatRoutes(app: FastifyInstance, { container }: { containe
   /* List conversations */
   app.get('/conversations', async (req, reply) => {
     const userId = getUserId(req)
-    const data   = await container.listConversations.execute(userId)
-    return reply.send({ data })
+    const { page, limit } = z.object({
+      page:  z.coerce.number().min(1).default(1),
+      limit: z.coerce.number().min(1).max(100).default(20),
+    }).parse(req.query)
+    const result = await container.listConversations.execute(userId, page, limit)
+    return reply.send(result)
   })
 
   /* Create conversation */

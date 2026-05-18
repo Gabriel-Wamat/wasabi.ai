@@ -18,7 +18,7 @@ function fmtDate(d: string | null) {
 }
 
 function normalize(value: string | null | undefined) {
-  return (value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return (value ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
 export default function DashboardPage() {
@@ -42,16 +42,9 @@ export default function DashboardPage() {
   const filteredDocuments = useMemo(() => {
     return attentionDocuments.filter(doc => {
       const text = normalize([
-        doc.title,
-        doc.category,
-        doc.issuerName,
-        doc.company,
-        doc.number,
-        doc.type,
-        doc.status,
-        ...doc.tags,
+        doc.title, doc.category, doc.issuerName, doc.company,
+        doc.number, doc.type, doc.status, ...doc.tags,
       ].filter(Boolean).join(' '))
-
       const matchesSearch = !normalizedSearch || text.includes(normalizedSearch)
       const matchesType = itemType === 'all' || itemType === 'documents'
       const matchesStatus = status === 'all' || doc.status === status
@@ -62,13 +55,9 @@ export default function DashboardPage() {
   const filteredProjects = useMemo(() => {
     return activeProjects.filter(project => {
       const text = normalize([
-        project.title,
-        project.description,
-        project.status,
-        project.priority,
-        ...project.tags,
+        project.title, project.description, project.status,
+        project.priority, ...project.tags,
       ].filter(Boolean).join(' '))
-
       const matchesSearch = !normalizedSearch || text.includes(normalizedSearch)
       const matchesType = itemType === 'all' || itemType === 'projects'
       const matchesStatus = status === 'all' || project.status === status
@@ -87,15 +76,15 @@ export default function DashboardPage() {
 
   if (error) return (
     <div>
-      <Header title="Dashboard" />
-      <div style={{ padding: 20, color: 'var(--rd)' }}>{error}</div>
+      <Header title="Dashboard" eyebrow="Visão geral" />
+      <div style={{ padding: 24, color: 'var(--rd)' }}>{error}</div>
     </div>
   )
 
   if (!data) return (
     <div>
-      <Header title="Dashboard" />
-      <div style={{ padding: 20, color: 'var(--t2)' }}>Carregando...</div>
+      <Header title="Dashboard" eyebrow="Visão geral" />
+      <div style={{ padding: 24, color: 'var(--t2)' }}>Carregando...</div>
     </div>
   )
 
@@ -104,17 +93,13 @@ export default function DashboardPage() {
     ? `${cashflowSummary.net >= 0 ? '+' : '-'}${fmt(Math.abs(cashflowSummary.net))}`
     : null
   const cashflowState = cashflowSummary
-    ? cashflowSummary.net > 0
-      ? 'superávit'
-      : cashflowSummary.net < 0
-        ? 'déficit'
-        : 'equilíbrio'
+    ? cashflowSummary.net > 0 ? 'superávit' : cashflowSummary.net < 0 ? 'déficit' : 'equilíbrio'
     : null
 
   return (
     <div>
-      <Header title="Dashboard" />
-      <div style={{ padding: 20 }}>
+      <Header title="Dashboard" eyebrow="Visão geral" showSearch />
+      <div className="page-pad">
         <FilterBar onClear={activeFilterCount ? clearFilters : undefined}>
           <SearchFilter
             placeholder="Buscar documentos e projetos..."
@@ -144,13 +129,13 @@ export default function DashboardPage() {
               { value: 'ACTIVE', label: 'Ativo' },
             ]}
           />
-          <div style={{ color: 'var(--t2)', fontSize: 12, marginLeft: activeFilterCount ? 0 : 'auto', paddingBottom: 9 }}>
+          <div className="filter-meta">
             {activeFilterCount ? `${totalFiltered} resultado${totalFiltered === 1 ? '' : 's'}` : 'Visão geral'}
           </div>
         </FilterBar>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <div className="grid-stats">
           <StatCard label="Documentos"      value={stats.totalDocuments} sub={`${stats.expiringSoon} vencendo em breve`} />
           <StatCard label="Projetos Ativos" value={stats.activeProjects} color="var(--bl)" sub="em andamento" />
           <StatCard label="Saldo Atual"     value={fmt(stats.currentBalance)} color="var(--gr)" sub="este mês" />
@@ -160,7 +145,7 @@ export default function DashboardPage() {
         {/* Cashflow chart */}
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
               Fluxo de Caixa{cashflowSummary ? ` — ${cashflowSummary.period}` : ''}
             </div>
             {cashflowSummary && (
@@ -172,7 +157,7 @@ export default function DashboardPage() {
           {cashflowSummary && (
             <div style={{
               color: cashflowSummary.net >= 0 ? 'var(--gr)' : 'var(--rd)',
-              background: cashflowSummary.net >= 0 ? 'var(--gd)' : 'rgba(255, 71, 87, 0.12)',
+              background: cashflowSummary.net >= 0 ? 'var(--gd)' : 'rgba(240,85,108,.12)',
               border: '1px solid var(--bd)',
               borderRadius: 8,
               padding: '5px 9px',
@@ -184,57 +169,63 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
+        <div className="card" style={{ marginBottom: 22 }}>
           <DashChart months={6} onSummaryChange={setCashflowSummary} />
         </div>
 
         {/* Attention docs */}
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Documentos com Atenção</div>
-        <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
-          {filteredDocuments.length ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Documento', 'Tipo', 'Vencimento', 'Status'].map(h => (
-                    <th key={h} style={{ textAlign: 'left', fontSize: 10, color: 'var(--t2)', fontWeight: 500, padding: '8px 12px', borderBottom: '1px solid var(--bd)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{h}</th>
-                  ))}
+        <div className="section-head">
+          <h2>Documentos com Atenção</h2>
+        </div>
+        <div style={{ overflowX: 'auto', marginBottom: 22 }}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Documento</th>
+                <th>Categoria</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocuments.map(doc => (
+                <tr key={doc.id}>
+                  <td style={{ fontWeight: 600 }}>{doc.title}</td>
+                  <td>{statusBadge(doc.type)}</td>
+                  <td className="muted">{fmtDate(doc.expiresAt)}</td>
+                  <td>{statusBadge(doc.status)}</td>
+                  <td></td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredDocuments.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #1c1c1c' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 600, fontSize: 12 }}>{doc.title}</td>
-                    <td style={{ padding: '9px 12px' }}>{statusBadge(doc.type)}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{fmtDate(doc.expiresAt)}</td>
-                    <td style={{ padding: '9px 12px' }}>{statusBadge(doc.status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div style={{ padding: 18, color: 'var(--t2)', fontSize: 12 }}>Nenhum documento encontrado para os filtros atuais.</div>
-          )}
+              ))}
+              {!filteredDocuments.length && (
+                <tr><td colSpan={5} className="tbl-empty">Nenhum documento encontrado.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Active projects */}
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Projetos Ativos</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+        <div className="section-head">
+          <h2>Projetos Ativos</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
           {filteredProjects.map(p => (
-            <div key={p.id} style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, padding: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{p.title}</div>
-              <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 10, lineHeight: 1.4 }}>{p.description}</div>
-              <div style={{ height: 4, background: 'var(--s3)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-                <div style={{ height: '100%', width: `${p.progress}%`, background: p.color, borderRadius: 2 }} />
+            <div key={p.id} className="card">
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{p.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 12, lineHeight: 1.45 }}>{p.description}</div>
+              <div className="progress-track" style={{ marginBottom: 6 }}>
+                <div className="progress-fill" style={{ width: `${p.progress}%`, background: p.color }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                <span style={{ color: 'var(--t2)' }}>Progresso</span>
-                <span style={{ color: p.color, fontWeight: 600 }}>{p.progress}%</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                <span className="dim">Progresso</span>
+                <span style={{ color: p.color, fontWeight: 700 }}>{p.progress}%</span>
               </div>
             </div>
           ))}
           {!filteredProjects.length && (
-            <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, padding: 18, color: 'var(--t2)', fontSize: 12 }}>
-              Nenhum projeto encontrado para os filtros atuais.
+            <div className="card" style={{ color: 'var(--t3)', fontSize: 13 }}>
+              Nenhum projeto encontrado.
             </div>
           )}
         </div>

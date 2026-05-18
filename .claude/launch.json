@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Backend (API)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@personal-hub/backend", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "Frontend (Web)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@personal-hub/web", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Ambos (Backend + Frontend)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--parallel", "--filter", "@personal-hub/backend", "--filter", "@personal-hub/web", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Desktop (Tauri)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@personal-hub/desktop", "dev"],
+      "port": 3003
+    },
+    {
+      "name": "Backend modo Desktop",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:desktop:backend"],
+      "port": 8080
+    }
+  ]
+}

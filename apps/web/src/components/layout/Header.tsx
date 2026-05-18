@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 
 interface HeaderProps {
   title: string
+  eyebrow?: string
   actions?: ReactNode
   showSearch?: boolean
 }
@@ -29,7 +30,7 @@ function HeaderIcon({ name }: { name: 'settings' | 'profile' }) {
 
 export function Header({ title, actions }: HeaderProps) {
   const router = useRouter()
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const navActions = [
     { href: '/settings', label: 'Configurações', icon: 'settings' as const },
     { href: '/profile', label: 'Perfil', icon: 'profile' as const },
@@ -39,7 +40,7 @@ export function Header({ title, actions }: HeaderProps) {
     <header style={{
       minHeight: 64,
       padding: '0 24px',
-      margin: '16px 16px 0 0',
+      margin: '16px 0 0',
       border: '1px solid var(--bd)',
       borderRadius: 14,
       display: 'flex',

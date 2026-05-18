@@ -1,8 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { login, register } from '@/lib/api/auth'
+import {
+  getOnboardingExperimentAssignment,
+  trackExperimentAssigned,
+  trackOnboardingEvent,
+} from '@/lib/experiments/onboarding-exp001'
 
 const demoEmail = 'demo@personalhub.dev'
 const demoPassword = 'senha123'
@@ -15,18 +20,57 @@ export default function LoginPage() {
   const [pass, setPass] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const assignment = useMemo(() => getOnboardingExperimentAssignment(), [])
+  const isRegister = mode === 'register'
+  const isVariant = isRegister && assignment.enabled && assignment.variant === 'continuar_no_secondary'
+  const primaryCtaLabel = isRegister ? (isVariant ? 'Continuar' : 'Criar conta') : 'Entrar'
 
   const enterApp = () => router.push('/dashboard')
+
+  useEffect(() => {
+    if (!isRegister || !assignment.enabled) return
+
+    trackExperimentAssigned(assignment)
+    trackOnboardingEvent('onboarding_step_viewed', {
+      step: 1,
+      step_id: 'onboarding_step_1',
+      variant: assignment.variant,
+      assignment_key: assignment.assignmentKey,
+      secondary_ctas_present: !isVariant,
+      session_id: assignment.sessionId,
+    })
+  }, [assignment, isRegister, isVariant])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+    if (isRegister && assignment.enabled) {
+      trackOnboardingEvent('onboarding_cta_click', {
+        step: 1,
+        step_id: 'onboarding_step_1',
+        variant: assignment.variant,
+        assignment_key: assignment.assignmentKey,
+        button_label: primaryCtaLabel,
+        session_id: assignment.sessionId,
+      })
+    }
     try {
       if (mode === 'login') {
         await login(email, pass)
       } else {
         await register(name, email, pass)
+        if (assignment.enabled) {
+          trackOnboardingEvent('onboarding_step_progressed', {
+            from: 1,
+            to: 2,
+            step_id: 'onboarding_step_1',
+            next_step_id: 'dashboard',
+            variant: assignment.variant,
+            assignment_key: assignment.assignmentKey,
+            session_id: assignment.sessionId,
+          })
+        }
       }
       enterApp()
     } catch (err: any) {
@@ -63,7 +107,9 @@ export default function LoginPage() {
         <div className="auth-heading">
           <h1>{mode === 'register' ? 'Crie sua conta' : 'Entre na sua conta'}</h1>
           <p>
-            {mode === 'register'
+            {isVariant
+              ? 'Informe seus dados para avançar para o próximo passo.'
+              : mode === 'register'
               ? 'Comece com login e senha próprios ou use a conta demo para testar.'
               : 'Use sua conta criada ou entre com o acesso demo preservado.'}
           </p>
@@ -120,11 +166,11 @@ export default function LoginPage() {
           {error && <div className="auth-error">{error}</div>}
 
           <button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? 'Aguarde...' : mode === 'register' ? 'Criar conta' : 'Entrar'}
+            {loading ? 'Aguarde...' : primaryCtaLabel}
           </button>
         </form>
 
-        <div className="auth-demo">
+        <div className="auth-demo" hidden={isVariant}>
           <div>
             <strong>Conta demo</strong>
             <span>{demoEmail} / {demoPassword}</span>
@@ -135,7 +181,7 @@ export default function LoginPage() {
         </div>
       </section>
 
-      <style jsx>{`
+      <style>{`
         .auth-shell {
           min-height: 100vh;
           display: grid;

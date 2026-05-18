@@ -8,6 +8,9 @@ apps/desktop/src-tauri/gen
 CLAUDE.md
 apps/web/public/LOGO_README.md
 .runtime-*.log
+.pid
+.tmp-*.log
+.tmp-*.pid
 target
 src-tauri/target
 .turbo

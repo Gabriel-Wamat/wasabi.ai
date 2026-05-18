@@ -45,17 +45,19 @@ export default function PersonalDocsPage() {
     else load(true)
   }, [search, status])
 
+  const valid    = docs.filter(d => d.status === 'VALID').length
+  const expiring = docs.filter(d => d.status === 'EXPIRING_SOON').length
+  const expired  = docs.filter(d => d.status === 'EXPIRED').length
+
   const openDocument = async (doc: Document) => {
     if (doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON') {
       setIsCreateOpen(true)
       return
     }
-
     if (!doc.fileUrl) {
       showToast('Este documento ainda não possui arquivo anexado.', 'info')
       return
     }
-
     setOpeningId(doc.id)
     try {
       const result = await api.get<{ data: { url: string } }>(`/documents/${doc.id}/file`)
@@ -69,52 +71,76 @@ export default function PersonalDocsPage() {
 
   return (
     <div>
-      <Header title="Documentos Pessoais" />
-      <div style={{ padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Documentos Pessoais</div>
-          <Button variant="primary" onClick={() => setIsCreateOpen(true)}>+ Adicionar</Button>
+      <Header title="Documentos Pessoais" eyebrow="Cofre digital" />
+      <div className="page-pad">
+        <div className="grid-stats">
+          <div className="stat-card">
+            <div className="stat-label">Total</div>
+            <div className="stat-value">{docs.length}</div>
+            <div className="stat-sub">documentos</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Válidos</div>
+            <div className="stat-value" style={{ color: 'var(--gr)' }}>{valid}</div>
+            <div className="stat-sub">em dia</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Vencendo</div>
+            <div className="stat-value" style={{ color: 'var(--yw)' }}>{expiring}</div>
+            <div className="stat-sub">em 30 dias</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Vencidos</div>
+            <div className="stat-value" style={{ color: 'var(--rd)' }}>{expired}</div>
+            <div className="stat-sub">expirados</div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div className="filter-bar">
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar documento..."
-            style={{ flex: 1, minWidth: 120, background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 7, padding: '5px 10px', color: 'var(--tx)', fontSize: 12, outline: 'none' }}
+            style={{ flex: 1, minWidth: 160, background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 'var(--r-sm)', padding: '0 12px', height: 36, color: 'var(--tx)', fontSize: 13, outline: 'none' }}
           />
-          <select
-            value={status} onChange={e => setStatus(e.target.value)}
-            style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 7, padding: '5px 10px', color: 'var(--tx)', fontSize: 12, outline: 'none' }}
-          >
-            <option value="">Todos</option>
-            <option value="VALID">Válido</option>
-            <option value="EXPIRING_SOON">Vencendo</option>
-            <option value="EXPIRED">Vencido</option>
-          </select>
+          <div className="filter-pill">
+            <span className="pill-label">Status</span>
+            <select value={status} onChange={e => setStatus(e.target.value)} style={{ background: 'transparent', border: 0, color: 'var(--tx)', fontSize: 13, outline: 'none', appearance: 'none', WebkitAppearance: 'none' }}>
+              <option value="">Todos</option>
+              <option value="VALID">Válido</option>
+              <option value="EXPIRING_SOON">Vencendo</option>
+              <option value="EXPIRED">Vencido</option>
+            </select>
+          </div>
+          <div className="filter-meta">{docs.length} documento{docs.length !== 1 ? 's' : ''}</div>
+          <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>+ Adicionar</Button>
         </div>
 
         {loading ? (
-          <div style={{ color: 'var(--t2)', padding: 20 }}>Carregando...</div>
+          <div className="muted" style={{ padding: 20 }}>Carregando...</div>
         ) : (
-          <div style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, overflow: 'hidden', opacity: refreshing ? 0.72 : 1, transition: 'opacity 160ms ease' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto', opacity: refreshing ? 0.72 : 1, transition: 'opacity 160ms ease' }}>
+            <table className="tbl">
               <thead>
                 <tr>
-                  {['Documento', 'Número', 'Emissor', 'Emissão', 'Vencimento', 'Status', ''].map(h => (
-                    <th key={h} style={{ textAlign: 'left', fontSize: 10, color: 'var(--t2)', fontWeight: 500, padding: '8px 12px', borderBottom: '1px solid var(--bd)', textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
+                  <th>Documento</th>
+                  <th>Número</th>
+                  <th>Emissor</th>
+                  <th>Categoria</th>
+                  <th>Vencimento</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {docs.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #1c1c1c' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 600, fontSize: 12 }}>{doc.title}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{doc.number ?? '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{doc.issuerName ?? '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{fmtDate(doc.issuedAt)}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: 'var(--t2)' }}>{fmtDate(doc.expiresAt)}</td>
-                    <td style={{ padding: '9px 12px' }}>{statusBadge(doc.status)}</td>
-                    <td style={{ padding: '9px 12px' }}>
+                  <tr key={doc.id}>
+                    <td style={{ fontWeight: 600 }}>{doc.title}</td>
+                    <td className="muted mono" style={{ fontSize: 12 }}>{doc.number ?? '—'}</td>
+                    <td className="muted">{doc.issuerName ?? '—'}</td>
+                    <td>{statusBadge('PERSONAL')}</td>
+                    <td className="muted">{fmtDate(doc.expiresAt)}</td>
+                    <td>{statusBadge(doc.status)}</td>
+                    <td>
                       <Button
                         size="sm"
                         variant={doc.status === 'EXPIRED' || doc.status === 'EXPIRING_SOON' ? 'primary' : 'secondary'}
@@ -126,7 +152,7 @@ export default function PersonalDocsPage() {
                   </tr>
                 ))}
                 {!docs.length && (
-                  <tr><td colSpan={7} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--t3)' }}>Nenhum documento encontrado</td></tr>
+                  <tr><td colSpan={7} className="tbl-empty">Nenhum documento encontrado</td></tr>
                 )}
               </tbody>
             </table>

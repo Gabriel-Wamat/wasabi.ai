@@ -15,10 +15,25 @@
     "db:seed:demo": "SEED_DEMO_DATA=true pnpm --filter @personal-hub/backend seed",
     "docker:seed:demo": "docker compose exec -e SEED_DEMO_DATA=true backend pnpm --filter @personal-hub/backend prisma db seed",
     "lint": "pnpm typecheck",
+    "guard:daily": "bash scripts/guard/daily-guard.sh",
     "typecheck": "pnpm --filter @personal-hub/backend typecheck && pnpm --filter @personal-hub/web typecheck",
     "test": "pnpm --filter @personal-hub/backend test"
   },
   "devDependencies": {
     "typescript": "^5.4.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-uri": "3.1.2",
+      "protobufjs": "7.5.6"
+    },
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "better-sqlite3",
+      "esbuild",
+      "prisma",
+      "sharp"
+    ]
   }
 }

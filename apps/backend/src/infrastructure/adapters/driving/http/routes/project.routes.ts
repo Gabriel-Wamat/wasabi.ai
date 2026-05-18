@@ -4,7 +4,7 @@ import { Container } from '../../../../../infrastructure/container'
 import { authMiddleware, getUserId } from '../middlewares/auth.middleware'
 import { AppError } from '../../../../../shared/errors/app-error'
 
-const createBody = z.object({
+const projectBodyShape = {
   title:       z.string().min(1).max(100),
   description: z.string().max(500).optional(),
   status:      z.enum(['ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).default('ACTIVE'),
@@ -13,7 +13,22 @@ const createBody = z.object({
   color:       z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#11C76F'),
   startDate:   z.string().datetime().optional().transform(v => v ? new Date(v) : undefined),
   endDate:     z.string().datetime().optional().transform(v => v ? new Date(v) : undefined),
-})
+}
+
+const dateOrderRefinement = {
+  message: 'startDate deve ser anterior a endDate',
+  path: ['endDate'],
+}
+
+const createBody = z.object(projectBodyShape).refine(
+  data => !data.startDate || !data.endDate || data.startDate < data.endDate,
+  dateOrderRefinement,
+)
+
+const updateBody = z.object(projectBodyShape).partial().refine(
+  data => !data.startDate || !data.endDate || data.startDate < data.endDate,
+  dateOrderRefinement,
+)
 
 const listQuery = z.object({
   status:   z.enum(['ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
@@ -51,7 +66,7 @@ export async function projectRoutes(app: FastifyInstance, { container }: { conta
 
   app.put('/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
-    const body   = createBody.partial().parse(req.body)
+    const body   = updateBody.parse(req.body)
     const userId = getUserId(req)
     const updated = await container.updateProject.execute({ id, userId, ...body })
     return reply.send({ data: updated.toJSON() })

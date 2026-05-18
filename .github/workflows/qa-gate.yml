@@ -1,0 +1,64 @@
+name: QA Gate
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  secrets-scan:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        with:
+          args: detect --no-banner --redact --verbose --exit-code 1
+
+  handshake-guard:
+    name: Block local handshake in CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start backend (handshake disabled)
+        id: start
+        shell: bash
+        run: |
+          export WASABI_DATA_DIR=$(mktemp -d)
+          export ENABLE_LOCAL_HANDSHAKE=false
+          export PORT=0
+          pnpm --filter @personal-hub/backend exec tsx src/server.ts > backend.log 2>&1 & echo $! > backend.pid
+          for i in {1..30}; do
+            if grep -q "WASABI_BACKEND_READY" backend.log; then break; fi; sleep 1; done
+          echo "── backend.log ──" && tail -n +1 backend.log || true
+          PORT=$(sed -n 's/.*WASABI_BACKEND_READY port=\([0-9]*\).*/\1/p' backend.log | head -n1)
+          if [ -z "$PORT" ]; then echo "::error::Não conseguiu detectar porta escolhida"; exit 1; fi
+          echo "port=$PORT" >> "$GITHUB_OUTPUT"
+      - name: Healthcheck
+        run: |
+          curl -sf http://127.0.0.1:${{ steps.start.outputs.port }}/health | jq .
+      - name: Assert local handshake is disabled
+        run: |
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${{ steps.start.outputs.port }}/api/local/handshake)
+          echo "Handshake status: $CODE"
+          if [ "$CODE" -eq 200 ]; then
+            echo "::error::/api/local/handshake está habilitado; isso é proibido em CI/prod"
+            exit 1
+          fi
+      - name: Stop backend
+        if: always()
+        run: |
+          kill $(cat backend.pid) 2>/dev/null || true

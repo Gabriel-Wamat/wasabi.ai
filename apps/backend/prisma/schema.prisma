@@ -1,63 +1,29 @@
+// Wasabi — schema local-first (SQLite + sqlite-vec)
+//
+// SQLite differences vs PostgreSQL:
+//   - String[] não existe → uso Json (Prisma serializa/desserializa).
+//   - @db.Uuid não existe → strings comuns (uuidv7 gera no app layer).
+//   - @db.Text não existe (TEXT é unbounded por padrão).
+//   - Embeddings vetoriais ficam em tabela virtual sqlite-vec
+//     gerenciada por conexão paralela (better-sqlite3); não aparecem aqui.
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Plan {
-  FREE
-  PRO
-}
-
-enum DocumentType {
-  PERSONAL
-  WORK
-}
-
-enum ProjectStatus {
-  ACTIVE
-  PAUSED
-  COMPLETED
-  ARCHIVED
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum TransactionType {
-  INCOME
-  EXPENSE
-  TRANSFER
-}
-
-enum PaymentMethod {
-  PIX
-  CREDIT_CARD
-  DEBIT_CARD
-  CASH
-  BANK_TRANSFER
-  OTHER
-}
-
-enum ChatRole {
-  USER
-  ASSISTANT
-}
-
 model User {
-  id                 String    @id @db.Uuid
+  id                 String    @id
   name               String
   email              String    @unique
   passwordHash       String
   avatar             String?
   timezone           String    @default("America/Sao_Paulo")
-  plan               Plan      @default(FREE)
+  plan               String    @default("FREE")
   googleAccessToken  String?
   googleRefreshToken String?
   googleTokenExpiry  DateTime?
@@ -71,18 +37,18 @@ model User {
   categories        FinancialCategory[]
   sessions          Session[]
   chatConversations ChatConversation[]
-  dataEmbeddings     DataEmbedding[]
-  llmSettings        UserLlmSettings?
+  dataEmbeddings    DataEmbedding[]
+  llmSettings       UserLlmSettings?
 
   @@index([email])
 }
 
 model UserLlmSettings {
-  id              String   @id @db.Uuid
-  userId          String   @unique @db.Uuid
-  provider        String   @default("openai")
-  model           String   @default("gpt-5-mini")
-  apiKeyEncrypted String?  @db.Text
+  id              String   @id
+  userId          String   @unique
+  provider        String   @default("anthropic")
+  model           String   @default("claude-haiku-4-5")
+  apiKeyEncrypted String?
   baseUrl         String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -93,8 +59,8 @@ model UserLlmSettings {
 }
 
 model Session {
-  id        String   @id @db.Uuid
-  userId    String   @db.Uuid
+  id        String   @id
+  userId    String
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -106,9 +72,9 @@ model Session {
 }
 
 model Document {
-  id         String       @id @db.Uuid
-  userId     String       @db.Uuid
-  type       DocumentType
+  id         String    @id
+  userId     String
+  type       String
   category   String
   title      String
   number     String?
@@ -116,11 +82,11 @@ model Document {
   issuedAt   DateTime?
   expiresAt  DateTime?
   fileUrl    String?
-  tags       String[]     @default([])
-  metadata   Json         @default("{}")
+  tags       String    @default("[]")
+  metadata   String    @default("{}")
   company    String?
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -129,20 +95,20 @@ model Document {
 }
 
 model Project {
-  id          String        @id @db.Uuid
-  userId      String        @db.Uuid
+  id          String    @id
+  userId      String
   title       String
   description String?
-  status      ProjectStatus @default(ACTIVE)
-  priority    Priority      @default(MEDIUM)
-  progress    Int           @default(0)
-  tags        String[]      @default([])
-  links       Json          @default("[]")
-  color       String        @default("#11C76F")
+  status      String    @default("ACTIVE")
+  priority    String    @default("MEDIUM")
+  progress    Int       @default(0)
+  tags        String    @default("[]")
+  links       String    @default("[]")
+  color       String    @default("#11C76F")
   startDate   DateTime?
   endDate     DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -150,13 +116,13 @@ model Project {
 }
 
 model FinancialCategory {
-  id        String          @id @db.Uuid
-  userId    String?         @db.Uuid
+  id        String  @id
+  userId    String?
   name      String
-  type      TransactionType
-  color     String          @default("#888888")
-  icon      String          @default("💰")
-  isDefault Boolean         @default(false)
+  type      String
+  color     String  @default("#888888")
+  icon      String  @default("💰")
+  isDefault Boolean @default(false)
   ipcaGroup String?
 
   user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -166,30 +132,30 @@ model FinancialCategory {
 }
 
 model Transaction {
-  id            String          @id @db.Uuid
-  userId        String          @db.Uuid
-  type          TransactionType
+  id            String   @id
+  userId        String
+  type          String
   amount        Int
-  categoryId    String          @db.Uuid
+  categoryId    String
   description   String
   date          DateTime
-  paymentMethod PaymentMethod   @default(PIX)
-  isRecurring   Boolean         @default(false)
-  tags          String[]        @default([])
+  paymentMethod String   @default("PIX")
+  isRecurring   Boolean  @default(false)
+  tags          String   @default("[]")
   attachmentUrl String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   category FinancialCategory @relation(fields: [categoryId], references: [id])
 
-  @@index([userId, date(sort: Desc)])
+  @@index([userId, date])
   @@index([userId, categoryId])
 }
 
 model FinancialGoal {
-  id            String   @id @db.Uuid
-  userId        String   @db.Uuid
+  id            String   @id
+  userId        String
   title         String
   targetAmount  Int
   currentAmount Int      @default(0)
@@ -204,24 +170,24 @@ model FinancialGoal {
 }
 
 model ChatConversation {
-  id         String        @id @db.Uuid
-  userId     String        @db.Uuid
-  title      String        @default("Nova conversa")
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id         String    @id
+  userId     String
+  title      String    @default("Nova conversa")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
 
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
 
-  @@index([userId, updatedAt(sort: Desc)])
+  @@index([userId, updatedAt])
 }
 
 model ChatMessage {
-  id             String   @id @db.Uuid
-  conversationId String   @db.Uuid
-  role           ChatRole
-  content        String   @db.Text
+  id             String   @id
+  conversationId String
+  role           String
+  content        String
   tokensUsed     Int?
   createdAt      DateTime @default(now())
 
@@ -230,14 +196,15 @@ model ChatMessage {
   @@index([conversationId, createdAt])
 }
 
+// DataEmbedding metadata stays in Prisma; the actual vector is stored in
+// the sqlite-vec virtual table `vec_embeddings` (separate connection).
 model DataEmbedding {
-  id         String   @id @db.Uuid
-  userId     String   @db.Uuid
+  id         String   @id
+  userId     String
   sourceType String
   sourceId   String
-  content    String   @db.Text
-  metadata   Json     @default("{}")
-  embedding  Unsupported("vector(1536)")?
+  content    String
+  metadata   String   @default("{}")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

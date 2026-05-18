@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client'
 import { ITransactionRepository, TransactionFilters } from '../../../../../application/ports/outbound/transaction.repository'
 import { Transaction, TransactionProps } from '../../../../../domain/entities/transaction.entity'
 import { PaginatedResult, paginationToSkipTake } from '../../../../../shared/pagination/paginate'
+import { parseJsonArray, serializeJson } from '../../../../../shared/json-fields'
 
 function toDomain(row: any): Transaction {
   return new Transaction({
@@ -9,7 +10,7 @@ function toDomain(row: any): Transaction {
     amount: row.amount, categoryId: row.categoryId,
     description: row.description, date: row.date,
     paymentMethod: row.paymentMethod, isRecurring: row.isRecurring,
-    tags: row.tags, attachmentUrl: row.attachmentUrl,
+    tags: parseJsonArray(row.tags), attachmentUrl: row.attachmentUrl,
     createdAt: row.createdAt, updatedAt: row.updatedAt,
   })
 }
@@ -52,16 +53,22 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         amount: data.amount, categoryId: data.categoryId,
         description: data.description, date: data.date,
         paymentMethod: data.paymentMethod, isRecurring: data.isRecurring,
-        tags: data.tags, attachmentUrl: data.attachmentUrl,
+        tags: serializeJson(data.tags ?? []), attachmentUrl: data.attachmentUrl,
       },
     })
     return toDomain(row)
   }
 
   async update(id: string, userId: string, data: Partial<Omit<TransactionProps, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>): Promise<Transaction> {
+    const { tags, ...scalarData } = data
+    const updateData: Prisma.TransactionUpdateManyMutationInput = {
+      ...scalarData,
+      ...(tags !== undefined ? { tags: serializeJson(tags) } : {}),
+      updatedAt: new Date(),
+    }
     const result = await this.prisma.transaction.updateMany({
       where: { id, userId },
-      data: { ...data, updatedAt: new Date() },
+      data: updateData,
     })
     if (result.count === 0) throw new Error('Transaction not found')
     const row = await this.prisma.transaction.findFirstOrThrow({ where: { id, userId } })
@@ -92,11 +99,16 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       where: { userId, type: 'EXPENSE', date: { gte: dateFrom, lte: dateTo } },
       _sum: { amount: true },
     })
+    if (rows.length === 0) return []
+
     const cats = await this.prisma.financialCategory.findMany({
       where: { id: { in: rows.map(r => r.categoryId) } },
+      select: { id: true, name: true, color: true, icon: true },
     })
+    const catMap = new Map(cats.map(c => [c.id, c]))
+
     return rows.map(r => {
-      const cat = cats.find(c => c.id === r.categoryId)
+      const cat = catMap.get(r.categoryId)
       return {
         categoryId: r.categoryId,
         name:  cat?.name  ?? 'Outros',

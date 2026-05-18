@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client'
 import { IProjectRepository, ProjectFilters } from '../../../../../application/ports/outbound/project.repository'
 import { Project, ProjectProps } from '../../../../../domain/entities/project.entity'
 import { PaginatedResult, paginationToSkipTake } from '../../../../../shared/pagination/paginate'
+import { parseJsonArray, parseJsonAny, serializeJson } from '../../../../../shared/json-fields'
 
 function toDomain(row: any): Project {
   return new Project({
@@ -12,8 +13,8 @@ function toDomain(row: any): Project {
     status:      row.status,
     priority:    row.priority,
     progress:    row.progress,
-    tags:        row.tags,
-    links:       Array.isArray(row.links) ? row.links : [],
+    tags:        parseJsonArray(row.tags),
+    links:       parseJsonAny(row.links, []),
     color:       row.color,
     startDate:   row.startDate,
     endDate:     row.endDate,
@@ -34,8 +35,10 @@ export class PrismaProjectRepository implements IProjectRepository {
     const where: Prisma.ProjectWhereInput = { userId }
     if (filters.status)   where.status   = filters.status
     if (filters.priority) where.priority = filters.priority
-    if (filters.search)   where.title    = { contains: filters.search, mode: 'insensitive' }
-    if (filters.tags?.length) where.tags = { hasEvery: filters.tags }
+    if (filters.search)   where.title    = { contains: filters.search }
+    if (filters.tags?.length) {
+      where.AND = filters.tags.map(tag => ({ tags: { contains: `"${tag}"` } }))
+    }
 
     const [rows, total] = await Promise.all([
       this.prisma.project.findMany({
@@ -58,7 +61,8 @@ export class PrismaProjectRepository implements IProjectRepository {
         id: data.id, userId: data.userId, title: data.title,
         description: data.description, status: data.status,
         priority: data.priority, progress: data.progress,
-        tags: data.tags, links: data.links as Prisma.InputJsonValue,
+        tags:  serializeJson(data.tags  ?? []),
+        links: serializeJson(data.links ?? []),
         color: data.color, startDate: data.startDate, endDate: data.endDate,
       },
     })
@@ -66,9 +70,16 @@ export class PrismaProjectRepository implements IProjectRepository {
   }
 
   async update(id: string, userId: string, data: Partial<Omit<ProjectProps, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>): Promise<Project> {
+    const { tags, links, ...scalarData } = data
+    const updateData: Prisma.ProjectUpdateManyMutationInput = {
+      ...scalarData,
+      ...(tags  !== undefined ? { tags:  serializeJson(tags) }  : {}),
+      ...(links !== undefined ? { links: serializeJson(links) } : {}),
+      updatedAt: new Date(),
+    }
     const result = await this.prisma.project.updateMany({
       where: { id, userId },
-      data:  { ...data, links: data.links as Prisma.InputJsonValue | undefined, updatedAt: new Date() },
+      data:  updateData,
     })
     if (result.count === 0) throw new Error('Project not found')
     const row = await this.prisma.project.findFirstOrThrow({ where: { id, userId } })

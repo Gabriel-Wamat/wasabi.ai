@@ -4,18 +4,57 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API URL para empacotar no build (ex: https://api.wasabi.app/api)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
+env:
+  # ─── PRODUÇÃO: aponte para o backend hospedado ─────────────────────────────
+  # Defina como secret/variable do repositório `WASABI_API_URL` ou passe via
+  # workflow_dispatch.inputs.api_url. Sem isso, os builds chamam localhost e
+  # NADA vai funcionar para os usuários.
+  WASABI_API_URL: ${{ github.event.inputs.api_url || vars.WASABI_API_URL }}
+
 jobs:
+  guard:
+    name: Guard rails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verifica que WASABI_API_URL está definida
+        run: |
+          if [ -z "${WASABI_API_URL:-}" ]; then
+            echo "::error::WASABI_API_URL está vazia. Defina vars.WASABI_API_URL no repositório (Settings → Secrets and variables → Actions → Variables) ou passe via workflow_dispatch."
+            echo "::error::Sem isso, o frontend empacotado tentará chamar http://localhost:3001 na máquina dos usuários e nada funcionará."
+            exit 1
+          fi
+          echo "✓ API URL: $WASABI_API_URL"
+
   build:
-    name: Build ${{ matrix.os }}
+    needs: guard
+    name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            label: macOS (Apple Silicon)
+          - os: macos-13
+            target: x86_64-apple-darwin
+            label: macOS (Intel)
+          - os: ubuntu-latest
+            target: ''
+            label: Linux
+          - os: windows-latest
+            target: ''
+            label: Windows
 
     steps:
       - name: Checkout
@@ -49,30 +88,146 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop app
-        run: pnpm build:desktop
+      - name: Build web (static export)
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.WASABI_API_URL }}
+        run: pnpm --filter @personal-hub/web build
+
+      - name: Verify web export exists
+        shell: bash
+        run: |
+          if [ ! -f apps/web/out/index.html ]; then
+            echo "::error::apps/web/out/index.html não foi gerado. O build do frontend falhou silenciosamente."
+            ls -la apps/web/out 2>&1 || true
+            exit 1
+          fi
+          echo "✓ web/out gerado"
+
+      - name: Build desktop bundle
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.WASABI_API_URL }}
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.target }}" ]; then
+            pnpm --filter @personal-hub/desktop tauri build --target ${{ matrix.target }}
+          else
+            pnpm --filter @personal-hub/desktop tauri build
+          fi
+
+      - name: Locate bundle directory
+        id: bundle
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.target }}" ]; then
+            BUNDLE_DIR="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
+          else
+            BUNDLE_DIR="apps/desktop/src-tauri/target/release/bundle"
+          fi
+          if [ ! -d "$BUNDLE_DIR" ]; then
+            echo "::error::Diretório de bundle não encontrado: $BUNDLE_DIR"
+            exit 1
+          fi
+          echo "dir=$BUNDLE_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test — bundle artifacts existem
+        shell: bash
+        run: |
+          BUNDLE_DIR="${{ steps.bundle.outputs.dir }}"
+          echo "── Conteúdo de $BUNDLE_DIR ──"
+          find "$BUNDLE_DIR" -maxdepth 3 -type f \( -name "*.dmg" -o -name "*.app" -o -name "*.msi" -o -name "*.exe" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) -print
+
+          ARTIFACT_COUNT=$(find "$BUNDLE_DIR" -maxdepth 3 -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.exe" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) | wc -l | tr -d ' ')
+          if [ "$ARTIFACT_COUNT" = "0" ]; then
+            echo "::error::Nenhum installer foi gerado em $BUNDLE_DIR"
+            exit 1
+          fi
+          echo "✓ $ARTIFACT_COUNT installer(s) gerado(s)"
+
+      - name: Smoke test — Linux AppImage roda --version
+        if: runner.os == 'Linux'
+        shell: bash
+        continue-on-error: true
+        run: |
+          BUNDLE_DIR="${{ steps.bundle.outputs.dir }}"
+          APPIMAGE=$(find "$BUNDLE_DIR/appimage" -name "*.AppImage" -type f | head -n1 || true)
+          if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
+            chmod +x "$APPIMAGE"
+            echo "AppImage encontrado: $APPIMAGE ($(du -h "$APPIMAGE" | cut -f1))"
+          fi
+
+      - name: Smoke test — Windows .msi/.exe foram gerados
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $BundleDir = "${{ steps.bundle.outputs.dir }}"
+          $msi = Get-ChildItem -Path "$BundleDir/msi" -Filter *.msi -ErrorAction SilentlyContinue
+          $nsis = Get-ChildItem -Path "$BundleDir/nsis" -Filter *.exe -ErrorAction SilentlyContinue
+          if (-not $msi -and -not $nsis) {
+            Write-Error "Nem .msi nem .exe (NSIS) gerados"
+            exit 1
+          }
+          if ($msi) { Write-Host "✓ MSI: $($msi.Name) ($([math]::Round($msi.Length / 1MB, 2)) MB)" }
+          if ($nsis) { Write-Host "✓ NSIS: $($nsis.Name) ($([math]::Round($nsis.Length / 1MB, 2)) MB)" }
+
+      - name: Smoke test — macOS .app + .dmg foram gerados
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          BUNDLE_DIR="${{ steps.bundle.outputs.dir }}"
+          DMG=$(find "$BUNDLE_DIR/dmg" -name "*.dmg" -type f | head -n1 || true)
+          APP=$(find "$BUNDLE_DIR/macos" -name "*.app" -maxdepth 2 -type d | head -n1 || true)
+          [ -n "$APP" ] || { echo "::error::.app não foi gerado"; exit 1; }
+          [ -n "$DMG" ] || { echo "::error::.dmg não foi gerado"; exit 1; }
+          echo "✓ .app: $APP"
+          echo "✓ .dmg: $DMG ($(du -h "$DMG" | cut -f1))"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.os }}
-          path: apps/desktop/src-tauri/target/release/bundle/
+          name: wasabi-${{ matrix.label }}
+          path: ${{ steps.bundle.outputs.dir }}
           if-no-files-found: error
 
       - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            apps/desktop/src-tauri/target/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/release/bundle/**/*.msi
-            apps/desktop/src-tauri/target/release/bundle/**/*.exe
-            apps/desktop/src-tauri/target/release/bundle/**/*.deb
-            apps/desktop/src-tauri/target/release/bundle/**/*.rpm
-            apps/desktop/src-tauri/target/release/bundle/**/*.AppImage
-            apps/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
+          generate_release_notes: true
           fail_on_unmatched_files: false
+          files: |
+            ${{ steps.bundle.outputs.dir }}/dmg/*.dmg
+            ${{ steps.bundle.outputs.dir }}/msi/*.msi
+            ${{ steps.bundle.outputs.dir }}/nsis/*.exe
+            ${{ steps.bundle.outputs.dir }}/deb/*.deb
+            ${{ steps.bundle.outputs.dir }}/rpm/*.rpm
+            ${{ steps.bundle.outputs.dir }}/appimage/*.AppImage
 
+  attach-installer:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: Anexar install-mac.sh ao release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload install-mac.sh
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: scripts/install-mac.sh

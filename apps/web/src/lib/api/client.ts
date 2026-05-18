@@ -24,6 +24,20 @@ function clearStoredAuth() {
   localStorage.removeItem('ph_user')
 }
 
+async function localHandshake(): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}/local/handshake`)
+    if (!res.ok) return null
+    const json = await res.json() as { data?: { accessToken?: string; refreshToken?: string; userId?: string } }
+    if (!json.data?.accessToken) return null
+    localStorage.setItem('ph_access',  json.data.accessToken)
+    localStorage.setItem('ph_refresh', json.data.refreshToken ?? json.data.accessToken)
+    return json.data.accessToken
+  } catch {
+    return null
+  }
+}
+
 function redirectToLogin() {
   if (typeof window === 'undefined') return
   if (!window.location.pathname.startsWith('/auth/login')) {
@@ -69,6 +83,10 @@ async function request<T>(
 
   if (res.status === 401 && path !== '/auth/login' && path !== '/auth/refresh') {
     token = await refreshAccessToken()
+    if (!token) {
+      // Try local auto-login (desktop/local-only mode)
+      token = await localHandshake()
+    }
     if (token) {
       res = await fetch(`${BASE}${path}`, buildRequest(token))
     } else {

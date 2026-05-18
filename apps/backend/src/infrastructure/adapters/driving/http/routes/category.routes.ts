@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { Container } from '../../../../../infrastructure/container'
 import { authMiddleware, getUserId } from '../middlewares/auth.middleware'
-import { TransactionType } from '@prisma/client'
+import { TransactionType } from '../../../../../domain/entities/transaction.entity'
 
 const createBody = z.object({
   name:  z.string().min(1).max(50),

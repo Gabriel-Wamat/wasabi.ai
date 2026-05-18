@@ -1,5 +1,5 @@
 import { FinancialCategory } from '../../../domain/entities/financial-category.entity'
-import { TransactionType } from '@prisma/client'
+import { TransactionType } from '../../../domain/entities/transaction.entity'
 
 interface ListCategoriesInput {
   userId: string

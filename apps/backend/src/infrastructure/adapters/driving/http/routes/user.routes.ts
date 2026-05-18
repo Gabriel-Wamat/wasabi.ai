@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { Container } from '../../../../../infrastructure/container'
+import { env } from '../../../../../shared/env'
 import { authMiddleware, getUserId } from '../middlewares/auth.middleware'
 import { createLlmAdapterFromSettings } from '../../../driven/llm/llm-adapter.factory'
 import { UserLlmProvider, UserLlmSettings } from '../../../../../application/ports/outbound/llm-settings.repository'
@@ -29,7 +30,7 @@ const ollamaModelsQuery = z.object({
   baseUrl: z.union([z.string().url(), z.literal('')]).optional(),
 })
 
-const OLLAMA_FALLBACK_URLS = [
+  const OLLAMA_FALLBACK_URLS = [
   'http://localhost:11434',
   'http://127.0.0.1:11434',
   'http://host.docker.internal:11434',
@@ -85,7 +86,7 @@ export async function userRoutes(app: FastifyInstance, { container }: { containe
     const candidates = uniqueUrls([
       query.baseUrl,
       current?.baseUrl,
-      process.env.OLLAMA_BASE_URL,
+      env.OLLAMA_BASE_URL,
       ...OLLAMA_FALLBACK_URLS,
     ])
 
@@ -156,7 +157,7 @@ export async function userRoutes(app: FastifyInstance, { container }: { containe
       const candidates = uniqueUrls([
         body.baseUrl,
         current?.baseUrl,
-        process.env.OLLAMA_BASE_URL,
+        env.OLLAMA_BASE_URL,
         ...OLLAMA_FALLBACK_URLS,
       ])
 

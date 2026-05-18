@@ -51,7 +51,7 @@ pub fn run() {
 
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
-                .tooltip("Personal Hub")
+                .tooltip("Wasabi")
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit"  => app.exit(0),
                     "show"  => { if let Some(w) = app.get_webview_window("main") { let _ = w.show(); let _ = w.set_focus(); } }
@@ -90,5 +90,5 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("Error while running Personal Hub");
+        .expect("Error while running Wasabi");
 }

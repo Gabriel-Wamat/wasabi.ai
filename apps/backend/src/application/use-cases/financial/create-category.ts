@@ -1,6 +1,6 @@
 import { uuidv7 } from 'uuidv7'
 import { FinancialCategory } from '../../../domain/entities/financial-category.entity'
-import { TransactionType } from '@prisma/client'
+import { TransactionType } from '../../../domain/entities/transaction.entity'
 
 interface CreateCategoryInput {
   userId: string

@@ -21,18 +21,12 @@ export default function ProjectsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
-  // Filtros
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'ALL'>('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
 
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [searchTerm, statusFilter, priorityFilter, allProjects])
+  useEffect(() => { loadProjects() }, [])
+  useEffect(() => { applyFilters() }, [searchTerm, statusFilter, priorityFilter, allProjects])
 
   const loadProjects = () => {
     setLoading(true)
@@ -44,7 +38,6 @@ export default function ProjectsPage() {
 
   const applyFilters = () => {
     let filtered = [...allProjects]
-
     if (searchTerm) {
       filtered = filtered.filter(p =>
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -52,15 +45,8 @@ export default function ProjectsPage() {
         p.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
-
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter(p => p.status === statusFilter)
-    }
-
-    if (priorityFilter !== 'ALL') {
-      filtered = filtered.filter(p => p.priority === priorityFilter)
-    }
-
+    if (statusFilter !== 'ALL') filtered = filtered.filter(p => p.status === statusFilter)
+    if (priorityFilter !== 'ALL') filtered = filtered.filter(p => p.priority === priorityFilter)
     setProjects(filtered)
   }
 
@@ -72,21 +58,8 @@ export default function ProjectsPage() {
 
   const hasActiveFilters = searchTerm || statusFilter !== 'ALL' || priorityFilter !== 'ALL'
 
-  const handleProgress = async (id: string, progress: number) => {
-    const newProg = Math.min(100, Math.max(0, progress + 5))
-    await api.patch(`/projects/${id}/progress`, { progress: newProg })
-    setAllProjects(ps => ps.map(p => p.id === id ? { ...p, progress: newProg } : p))
-  }
-
-  const handleEdit = (project: Project) => {
-    setSelectedProject(project)
-    setIsEditModalOpen(true)
-  }
-
-  const handleDeleteClick = (project: Project) => {
-    setSelectedProject(project)
-    setIsDeleteDialogOpen(true)
-  }
+  const handleEdit = (project: Project) => { setSelectedProject(project); setIsEditModalOpen(true) }
+  const handleDeleteClick = (project: Project) => { setSelectedProject(project); setIsDeleteDialogOpen(true) }
 
   const handleDeleteConfirm = async () => {
     if (!selectedProject) return
@@ -99,112 +72,69 @@ export default function ProjectsPage() {
     }
   }
 
+  const priorityBadge = (priority: string) => {
+    const map: Record<string, string> = { LOW: 'blue', MEDIUM: 'yellow', HIGH: 'red' }
+    const labels: Record<string, string> = { LOW: 'Baixa', MEDIUM: 'Média', HIGH: 'Alta' }
+    return <span className={`badge ${map[priority] ?? 'gray'}`}><span className="dot"/>{labels[priority] ?? priority}</span>
+  }
+
   return (
     <div>
       <Header title="Projetos" />
-      <div style={{ padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Projetos</div>
-          <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>+ Novo</Button>
-        </div>
-
+      <div className="page-pad">
         <FilterBar onClear={hasActiveFilters ? clearFilters : undefined}>
-          <SearchFilter
-            placeholder="Buscar projetos..."
-            value={searchTerm}
-            onChange={setSearchTerm}
-          />
-          <Filter
-            label="Status"
-            value={statusFilter}
-            onChange={(v) => setStatusFilter(v as any)}
-            options={[
-              { value: 'ALL', label: 'Todos' },
-              { value: 'ACTIVE', label: 'Ativos' },
-              { value: 'PAUSED', label: 'Pausados' },
-              { value: 'COMPLETED', label: 'Concluídos' },
-              { value: 'ARCHIVED', label: 'Arquivados' },
-            ]}
-          />
-          <Filter
-            label="Prioridade"
-            value={priorityFilter}
-            onChange={setPriorityFilter}
-            options={[
-              { value: 'ALL', label: 'Todas' },
-              { value: 'LOW', label: 'Baixa' },
-              { value: 'MEDIUM', label: 'Média' },
-              { value: 'HIGH', label: 'Alta' },
-            ]}
-          />
+          <SearchFilter placeholder="Buscar projetos..." value={searchTerm} onChange={setSearchTerm} />
+          <Filter label="Status" value={statusFilter} onChange={(v) => setStatusFilter(v as any)} options={[
+            { value: 'ALL', label: 'Todos' },
+            { value: 'ACTIVE', label: 'Ativos' },
+            { value: 'PAUSED', label: 'Pausados' },
+            { value: 'COMPLETED', label: 'Concluídos' },
+            { value: 'ARCHIVED', label: 'Arquivados' },
+          ]} />
+          <Filter label="Prioridade" value={priorityFilter} onChange={setPriorityFilter} options={[
+            { value: 'ALL', label: 'Todas' },
+            { value: 'LOW', label: 'Baixa' },
+            { value: 'MEDIUM', label: 'Média' },
+            { value: 'HIGH', label: 'Alta' },
+          ]} />
+          <div className="filter-meta">{projects.length} projeto{projects.length !== 1 ? 's' : ''}</div>
+          <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)}>+ Novo</Button>
         </FilterBar>
 
-        <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 12 }}>
-          {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'} {hasActiveFilters && '(filtrados)'}
-        </div>
-
         {loading ? (
-          <div style={{ color: 'var(--t2)', padding: 20 }}>Carregando...</div>
+          <div className="muted" style={{ padding: 20 }}>Carregando...</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-            {projects.map(p => {
-              const dotColor = p.status === 'ACTIVE' ? '#11C76F' : p.status === 'PAUSED' ? '#FFC107' : p.status === 'COMPLETED' ? '#4A90D9' : '#444'
-              return (
-                <div key={p.id} style={{ background: 'var(--s2)', border: '1px solid var(--bd)', borderRadius: 10, padding: 16, position: 'relative', transition: 'border-color .15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--gr)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--bd)')}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    {statusBadge(p.status)}
-                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor }} />
-                  </div>
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{p.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 12, lineHeight: 1.5 }}>{p.description}</div>
-                  <div style={{ height: 4, background: 'var(--s3)', borderRadius: 2, overflow: 'hidden', marginBottom: 6 }}>
-                    <div style={{ height: '100%', width: `${p.progress}%`, background: p.color, borderRadius: 2, transition: 'width .3s' }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 10 }}>
-                    <span style={{ color: 'var(--t2)' }}>Progresso</span>
-                    <span style={{ color: p.color, fontWeight: 600 }}>{p.progress}%</span>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-                    {p.tags.map(t => (
-                      <span key={t} style={{ fontSize: 10, background: 'var(--s3)', color: 'var(--t2)', padding: '2px 6px', borderRadius: 4 }}>{t}</span>
-                    ))}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <button
-                      onClick={() => handleEdit(p)}
-                      style={{
-                        flex: 1, background: 'var(--s3)', border: '1px solid var(--bd)',
-                        borderRadius: 6, padding: '6px', color: 'var(--tx)',
-                        fontSize: 11, cursor: 'pointer', fontWeight: 500,
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bd)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'var(--s3)')}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(p)}
-                      style={{
-                        flex: 1, background: 'rgba(244, 67, 54, 0.1)', border: '1px solid rgba(244, 67, 54, 0.3)',
-                        borderRadius: 6, padding: '6px', color: 'var(--rd)',
-                        fontSize: 11, cursor: 'pointer', fontWeight: 500,
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(244, 67, 54, 0.2)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(244, 67, 54, 0.1)')}
-                    >
-                      Excluir
-                    </button>
-                  </div>
+            {projects.map(p => (
+              <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="row between">
+                  {statusBadge(p.status)}
+                  {priorityBadge(p.priority)}
                 </div>
-              )
-            })}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.title}</div>
+                  <div className="dim" style={{ fontSize: 12, lineHeight: 1.5 }}>{p.description}</div>
+                </div>
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${p.progress}%`, background: p.color }} />
+                </div>
+                <div className="row between" style={{ fontSize: 12 }}>
+                  <span className="dim">Progresso</span>
+                  <span style={{ color: p.color, fontWeight: 700 }}>{p.progress}%</span>
+                </div>
+                {p.tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {p.tags.map(t => <span key={t} className="tag">{t}</span>)}
+                  </div>
+                )}
+                <div className="row" style={{ marginTop: 'auto', gap: 6 }}>
+                  <button onClick={() => handleEdit(p)} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>Editar</button>
+                  <button onClick={() => handleDeleteClick(p)} className="btn btn-danger btn-sm" style={{ flex: 1 }}>Excluir</button>
+                </div>
+              </div>
+            ))}
             {!projects.length && (
-              <div style={{ color: 'var(--t3)', gridColumn: '1/-1', padding: 40, textAlign: 'center' }}>
+              <div className="card dim" style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40 }}>
                 {hasActiveFilters ? 'Nenhum projeto encontrado com os filtros aplicados' : 'Nenhum projeto cadastrado'}
               </div>
             )}
@@ -212,21 +142,10 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      <CreateProjectModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={loadProjects}
-      />
-
+      <CreateProjectModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} onSuccess={loadProjects} />
       {selectedProject && (
-        <EditProjectModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onSuccess={loadProjects}
-          project={selectedProject}
-        />
+        <EditProjectModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSuccess={loadProjects} project={selectedProject} />
       )}
-
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}

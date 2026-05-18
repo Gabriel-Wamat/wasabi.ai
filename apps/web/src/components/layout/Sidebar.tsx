@@ -40,7 +40,7 @@ function Icon({ name }: { name: string }) {
 }
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const router   = useRouter()
   const { isExpanded, setSidebarHovered, sidebarWidth } = useSidebar()
 
@@ -52,20 +52,20 @@ export function Sidebar() {
   ]
 
   return (
-    <aside 
+    <aside
       onMouseEnter={() => setSidebarHovered(true)}
       onMouseLeave={() => setSidebarHovered(false)}
-      style={{ 
-        width: sidebarWidth, 
-        minWidth: sidebarWidth, 
-        background: 'var(--s1)', 
+      style={{
+        width: sidebarWidth,
+        minWidth: sidebarWidth,
+        background: 'var(--s1)',
         border: '1px solid var(--bd)',
         borderRadius: '14px',
-        display: 'flex', 
-        flexDirection: 'column', 
+        display: 'flex',
+        flexDirection: 'column',
         height: 'calc(100vh - 32px)',
-        position: 'fixed', 
-        top: 16, 
+        position: 'fixed',
+        top: 16,
         left: 16,
         transition: 'width .28s cubic-bezier(.2,.8,.2,1), min-width .28s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease',
         overflow: 'hidden',
@@ -74,9 +74,9 @@ export function Sidebar() {
       }}>
       {/* Logo */}
       <div style={{ padding: isExpanded ? '18px 16px' : '18px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 10, justifyContent: isExpanded ? 'flex-start' : 'center', minHeight: 76 }}>
-        <img 
-          src="/wasabi-v-icon.svg" 
-          alt="Wasabi" 
+        <img
+          src="/wasabi-v-icon.svg"
+          alt="Wasabi"
           style={{ width: 32, height: 32, flexShrink: 0 }}
         />
         {isExpanded && (
@@ -102,13 +102,13 @@ export function Sidebar() {
                   onClick={() => router.push(item.href)}
                   title={!isExpanded ? item.label : ''}
                   style={{
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 9, 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 9,
                     padding: isExpanded ? '8px 10px' : '10px',
-                    borderRadius: 8, 
-                    cursor: 'pointer', 
-                    marginBottom: 1, 
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    marginBottom: 1,
                     fontSize: 13,
                     background: active ? 'var(--gd)' : 'transparent',
                     color: active ? 'var(--gr)' : 'var(--t2)',
@@ -130,14 +130,14 @@ export function Sidebar() {
                     </>
                   )}
                   {!isExpanded && item.badge && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: 6, 
-                      right: 6, 
-                      width: 6, 
-                      height: 6, 
-                      borderRadius: '50%', 
-                      background: 'var(--rd)' 
+                    <div style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: 'var(--rd)',
                     }} />
                   )}
                 </div>
@@ -146,7 +146,6 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-
     </aside>
   )
 }

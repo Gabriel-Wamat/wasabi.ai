@@ -20,14 +20,18 @@ function signTokens(app: FastifyInstance, userId: string) {
 }
 
 export async function authRoutes(app: FastifyInstance, { container }: { container: Container }) {
-  app.post('/register', async (req, reply) => {
+  app.post('/register', {
+    config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const body = registerBody.parse(req.body)
     const user = await container.register.execute(body)
     const tokens = signTokens(app, user.id)
     return reply.status(201).send({ data: { user, ...tokens } })
   })
 
-  app.post('/login', async (req, reply) => {
+  app.post('/login', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const body = loginBody.parse(req.body)
     const user = await container.login.execute(body)
     const tokens = signTokens(app, user.id)

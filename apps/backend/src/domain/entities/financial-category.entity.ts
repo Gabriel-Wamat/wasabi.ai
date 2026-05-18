@@ -1,4 +1,4 @@
-import { TransactionType } from '@prisma/client'
+import { TransactionType } from './transaction.entity'
 
 export interface FinancialCategoryProps {
   id: string

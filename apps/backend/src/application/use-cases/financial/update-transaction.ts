@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/errors/app-error'
 import { ICacheRepository } from '../../../application/ports/outbound/cache.repository'
+import { ICategoryRepository } from '../../../application/ports/outbound/category.repository'
 import { ITransactionRepository } from '../../../application/ports/outbound/transaction.repository'
 import { PaymentMethod } from '../../../domain/entities/transaction.entity'
 
@@ -17,6 +18,7 @@ interface UpdateTransactionInput {
 export class UpdateTransactionUseCase {
   constructor(
     private readonly txRepo: ITransactionRepository,
+    private readonly categories: ICategoryRepository,
     private readonly cache: ICacheRepository,
   ) {}
 
@@ -24,6 +26,11 @@ export class UpdateTransactionUseCase {
     const tx = await this.txRepo.findById(input.id, input.userId)
     if (!tx) {
       throw AppError.notFound('Transação')
+    }
+
+    if (input.categoryId !== undefined) {
+      const category = await this.categories.findById(input.categoryId, input.userId)
+      if (!category) throw AppError.notFound('Categoria')
     }
 
     const updates: Omit<UpdateTransactionInput, 'id' | 'userId'> = {}

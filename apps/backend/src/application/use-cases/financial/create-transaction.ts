@@ -1,6 +1,8 @@
 import { uuidv7 } from 'uuidv7'
+import { AppError } from '../../../shared/errors/app-error'
 import { ITransactionRepository } from '../../../application/ports/outbound/transaction.repository'
 import { ICacheRepository } from '../../../application/ports/outbound/cache.repository'
+import { ICategoryRepository } from '../../../application/ports/outbound/category.repository'
 import { TransactionType, PaymentMethod } from '../../../domain/entities/transaction.entity'
 
 interface Input {
@@ -19,9 +21,13 @@ export class CreateTransactionUseCase {
   constructor(
     private readonly transactions: ITransactionRepository,
     private readonly cache: ICacheRepository,
+    private readonly categories: ICategoryRepository,
   ) {}
 
   async execute(input: Input) {
+    const category = await this.categories.findById(input.categoryId, input.userId)
+    if (!category) throw AppError.notFound('Categoria')
+
     const tx = await this.transactions.create({
       id:            uuidv7(),
       userId:        input.userId,

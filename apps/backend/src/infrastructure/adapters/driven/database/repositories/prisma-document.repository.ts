@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client'
 import { IDocumentRepository, DocumentFilters } from '../../../../../application/ports/outbound/document.repository'
 import { Document, DocumentProps } from '../../../../../domain/entities/document.entity'
 import { PaginatedResult, paginationToSkipTake } from '../../../../../shared/pagination/paginate'
+import { parseJsonArray, parseJsonObject, serializeJson } from '../../../../../shared/json-fields'
 
 function toDomain(row: any): Document {
   return new Document({
@@ -15,8 +16,8 @@ function toDomain(row: any): Document {
     issuedAt:   row.issuedAt,
     expiresAt:  row.expiresAt,
     fileUrl:    row.fileUrl,
-    tags:       row.tags,
-    metadata:   row.metadata as Record<string, unknown>,
+    tags:       parseJsonArray(row.tags),
+    metadata:   parseJsonObject(row.metadata),
     company:    row.company,
     createdAt:  row.createdAt,
     updatedAt:  row.updatedAt,
@@ -36,9 +37,13 @@ export class PrismaDocumentRepository implements IDocumentRepository {
 
     if (filters.type)     where.type     = filters.type
     if (filters.category) where.category = filters.category
-    if (filters.search)   where.title    = { contains: filters.search, mode: 'insensitive' }
-    if (filters.tags?.length) where.tags = { hasEvery: filters.tags }
+    if (filters.search)   where.title    = { contains: filters.search }
     if (filters.expiresBefore) where.expiresAt = { lte: filters.expiresBefore }
+
+    // tags filter (SQLite não tem hasEvery — emula com AND de contains)
+    if (filters.tags?.length) {
+      where.AND = filters.tags.map(tag => ({ tags: { contains: `"${tag}"` } }))
+    }
 
     const sort  = filters.sort  ?? 'createdAt'
     const order = filters.order ?? 'desc'
@@ -72,8 +77,8 @@ export class PrismaDocumentRepository implements IDocumentRepository {
         issuedAt:   data.issuedAt,
         expiresAt:  data.expiresAt,
         fileUrl:    data.fileUrl,
-        tags:       data.tags,
-        metadata:   data.metadata as Prisma.InputJsonValue,
+        tags:       serializeJson(data.tags ?? []),
+        metadata:   serializeJson(data.metadata ?? {}),
         company:    data.company,
       },
     })
@@ -81,9 +86,11 @@ export class PrismaDocumentRepository implements IDocumentRepository {
   }
 
   async update(id: string, userId: string, data: Partial<Omit<DocumentProps, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>): Promise<Document> {
+    const { tags, metadata, ...scalarData } = data
     const updateData: Prisma.DocumentUpdateManyMutationInput = {
-      ...data,
-      metadata: data.metadata as Prisma.InputJsonValue | undefined,
+      ...scalarData,
+      ...(tags     !== undefined ? { tags:     serializeJson(tags) } : {}),
+      ...(metadata !== undefined ? { metadata: serializeJson(metadata) } : {}),
       updatedAt: new Date(),
     }
     const result = await this.prisma.document.updateMany({

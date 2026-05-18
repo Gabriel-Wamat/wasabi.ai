@@ -1,5 +1,5 @@
 import { AppError } from '../../../shared/errors/app-error'
-import { ProjectStatus, Priority } from '@prisma/client'
+import { Priority, ProjectStatus } from '../../../domain/entities/project.entity'
 
 interface UpdateProjectInput {
   id: string

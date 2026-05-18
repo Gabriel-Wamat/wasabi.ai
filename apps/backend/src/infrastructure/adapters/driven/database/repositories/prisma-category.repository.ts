@@ -1,5 +1,6 @@
-import { PrismaClient, TransactionType } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { FinancialCategory } from '../../../../../domain/entities/financial-category.entity'
+import { TransactionType } from '../../../../../domain/entities/transaction.entity'
 import { ICategoryRepository } from '../../../../../application/ports/outbound/category.repository'
 
 export class PrismaCategoryRepository implements ICategoryRepository {

@@ -6,7 +6,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ title }: NavbarProps) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
 
   const getBreadcrumb = () => {
     const paths = pathname.split('/').filter(Boolean)

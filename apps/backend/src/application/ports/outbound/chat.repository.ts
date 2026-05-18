@@ -5,7 +5,7 @@ export interface IChatRepository {
   /* Conversations */
   createConversation(input: { id: string; userId: string; title?: string }): Promise<ChatConversation>
   findConversationById(id: string, userId: string): Promise<ChatConversation | null>
-  listConversations(userId: string): Promise<ChatConversation[]>
+  listConversations(userId: string, page: number, limit: number): Promise<{ data: ChatConversation[]; total: number }>
   updateConversationTitle(id: string, userId: string, title: string): Promise<ChatConversation>
   archiveConversation(id: string, userId: string): Promise<void>
   touchConversation(id: string, userId: string): Promise<void>
